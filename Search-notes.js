@@ -30,9 +30,9 @@
 
     notesOnScreen.forEach(noteElement => {
       const noteId = noteElement.dataset.noteId;
-      if (!noteId || !window.notes) return;
+      if (!noteId || !window.NotesApp || !window.NotesApp.notes) return;
 
-      const noteData = window.notes.get(noteId);
+      const noteData = window.NotesApp.notes.get(noteId);
       if (!noteData) return;
 
       // La nota se muestra si la búsqueda está vacía o si hay una coincidencia

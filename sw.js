@@ -1,6 +1,6 @@
 // Aumentamos la versión del caché para forzar una actualización
-const STATIC_CACHE_NAME = 'notas-app-static-cache-v3';
-const DYNAMIC_CACHE_NAME = 'notas-app-dynamic-cache-v1';
+const STATIC_CACHE_NAME = 'notas-app-static-cache-v4';
+const DYNAMIC_CACHE_NAME = 'notas-app-dynamic-cache-v2';
 
 // Lista de archivos estáticos que componen el "cascarón" de la aplicación.
 const APP_SHELL_FILES = [
@@ -8,15 +8,16 @@ const APP_SHELL_FILES = [
   '/index.html',
   '/style.css',
   '/app.js',
+  '/editor-modal.js',
   '/calendar-view.js',
   '/filter-type.js',
   '/search-notes.js',
   '/ui-interactions.js',
-  '/manifest.json', // Asumiendo que tu manifest se llama así
+  '/manifest.json',
   '/favicon.ico',
   '/apple-touch-icon.png',
-  '/android-chrome-192x192.png',
-  '/android-chrome-512x512.png'
+  '/icons/android-chrome-192x192.png', // Corregir ruta si es necesario
+  '/icons/android-chrome-512x512.png'  // Corregir ruta si es necesario
 ];
 
 // 1. Evento 'install': Cacheamos el App Shell.
@@ -51,19 +52,16 @@ self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
   // Estrategia para las peticiones a la API (Stale-While-Revalidate)
-  if (url.pathname.startsWith('/api/notes')) {
+  if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       caches.open(DYNAMIC_CACHE_NAME).then(cache => {
-        return cache.match(event.request).then(response => {
-          // 1. Pide a la red la versión más reciente
-          const fetchPromise = fetch(event.request).then(networkResponse => {
+        return fetch(event.request).then(networkResponse => {
             // Si la petición es exitosa, guardamos la nueva respuesta en el caché dinámico
             cache.put(event.request, networkResponse.clone());
             return networkResponse;
-          });
-
-          // 2. Devuelve la respuesta del caché si existe, si no, espera a la red.
-          return response || fetchPromise;
+        }).catch(() => {
+            // Si la red falla, intentamos devolver desde el caché
+            return cache.match(event.request);
         });
       })
     );
@@ -73,7 +71,13 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       caches.match(event.request).then(response => {
         // Devuelve el archivo desde el caché si existe, si no, ve a la red.
-        return response || fetch(event.request);
+        return response || fetch(event.request).then(fetchResponse => {
+            // Opcional: Cachear archivos estáticos no pre-cacheados dinámicamente
+            return caches.open(DYNAMIC_CACHE_NAME).then(cache => {
+                cache.put(event.request, fetchResponse.clone());
+                return fetchResponse;
+            });
+        });
       })
     );
   }

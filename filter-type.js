@@ -32,15 +32,13 @@
   }
 
   function filtrarNotas(filtro) {
-    // En lugar de modificar las notas, vamos a ocultar/mostrar las columnas enteras
-    // Esto es más eficiente y funciona mejor con el renderizado de la app.
     const notas = document.querySelectorAll(".note");
     
     notas.forEach(notaEl => {
       const noteId = notaEl.dataset.noteId;
-      if (!noteId || !window.notes) return;
+      if (!noteId || !window.NotesApp || !window.NotesApp.notes) return;
 
-      const nota = window.notes.get(noteId);
+      const nota = window.NotesApp.notes.get(noteId);
       if (!nota) return;
 
       // La lógica de filtrado: si el filtro es "Ambas" o coincide con el tipo de la nota, se muestra.

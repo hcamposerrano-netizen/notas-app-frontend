@@ -80,13 +80,13 @@
 
   // ---- NUEVA FUNCIÓN PRINCIPAL DE RENDERIZADO ----
   function renderCalendarView() {
-    if (!window.notes || window.notes.size === 0) {
+    if (!window.NotesApp || !window.NotesApp.notes || window.NotesApp.notes.size === 0) {
       container.innerHTML = `<div style="padding:2rem; text-align:center; color: var(--color-text-secondary);"><h2>📭 No hay notas disponibles</h2><p>Agrega algunas notas para ver el calendario</p></div>`;
       return;
     }
 
     // BUG FIX: Filtramos por 'fecha', que siempre existe si hay fecha_hora.
-    const notas = Array.from(window.notes.values()).filter(n => n.fecha);
+    const notas = Array.from(window.NotesApp.notes.values()).filter(n => n.fecha);
     if (notas.length === 0) {
       container.innerHTML = `<div style="padding:2rem; text-align:center; color: var(--color-text-secondary);"><h2>📅 Sin notas con fecha</h2><p>Las notas necesitan fechas para mostrarse en el calendario</p></div>`;
       return;
@@ -170,7 +170,11 @@
 
   function renderNormalView() {
     container.classList.remove("calendar-mode");
-    if (window.renderNotes) { window.renderNotes(); } else { location.reload(); }
+    if (window.NotesApp && window.NotesApp.renderNotes) { 
+        window.NotesApp.renderNotes(); 
+    } else { 
+        location.reload(); 
+    }
   }
 
   toggleBtn.addEventListener("click", () => {
@@ -184,13 +188,13 @@
     }
   });
 
-  const originalRenderNotes = window.renderNotes;
+  // Sobrescribimos el método renderNotes de la app para que se actualice la vista de calendario
+  const originalRenderNotes = window.NotesApp?.renderNotes;
   if (originalRenderNotes) {
-    window.renderNotes = function() {
+    window.NotesApp.renderNotes = function() {
+      originalRenderNotes.apply(this, arguments);
       if (calendarMode) {
         renderCalendarView();
-      } else {
-        originalRenderNotes.apply(this, arguments);
       }
     };
   }

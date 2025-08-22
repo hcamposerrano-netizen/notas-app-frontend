@@ -1,5 +1,5 @@
 // ==============================================================
-// 📱 APLICACIÓN DE NOTAS - VERSIÓN 4.0 (LISTA PARA DESPLIEGUE)
+// 📱 APLICACIÓN DE NOTAS - VERSIÓN 4.1 (LISTA PARA DESPLIEGUE, SIN SHARE)
 // ==============================================================
 
 // <-- ¡ACCIÓN! Pega aquí la URL de tu backend en Render
@@ -20,31 +20,6 @@ const NotesApp = {
       (notesFromServer || []).forEach(n => this.notes.set(n.id, n));
       this.renderNotes();
     } catch (error) { console.error('❌ Error al recargar datos:', error); }
-  },
-  
-  // (Añadido para la funcionalidad de compartir)
-  async toggleShareNote(note) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/notes/${note.id}/share`, { // <-- USANDO LA VARIABLE
-        method: 'PATCH'
-      });
-      if (!response.ok) throw new Error('Error del servidor al compartir la nota.');
-      
-      const result = await response.json();
-      
-      const localNote = this.notes.get(note.id);
-      if(localNote) localNote.isPublic = result.isPublic;
-
-      if (result.isPublic) {
-        prompt("✅ ¡Nota pública! Copia este enlace para compartir:", result.shareableLink);
-      } else {
-        alert("🔒 La nota ahora es privada.");
-      }
-      this.renderNotes();
-    } catch (error) {
-      console.error('❌ Error al cambiar el estado de compartición:', error);
-      alert('❌ Hubo un error al intentar compartir la nota.');
-    }
   },
 
   async apiUpdate(note) {
@@ -113,14 +88,8 @@ const NotesApp = {
     const s = this.createColorSelect(n);
     const b = this.createDeleteButton(n);
     const p = this.createPinButton(n);
-    
-    // (Añadido para la funcionalidad de compartir)
-    const shareBtn = document.createElement("button");
-    shareBtn.textContent = n.isPublic ? "🛰️" : "🌐";
-    shareBtn.title = n.isPublic ? "Gestionar nota compartida" : "Compartir nota";
-    shareBtn.onclick = () => this.toggleShareNote(n);
 
-    c.append(d, t, s, editBtn, shareBtn, b, p);
+    c.append(d, t, s, editBtn, b, p);
     return c;
   },
 
