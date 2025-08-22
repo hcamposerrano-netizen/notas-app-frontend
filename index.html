@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Línea de Tiempo de Notas</title>
+
+    <link rel="stylesheet" href="style.css" />
+    <meta name="theme-color" content="#64351b" />
+    <link rel="manifest" href="manifest.json" /> 
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+</head>
+<body>
+    <button class="panel-toggle">☰</button>
+
+    <main id="main-container">
+        <div id="columns-container"></div>
+        <aside id="control-panel">
+            <div class="panel-header">
+                <h2>🛠️ Panel de Control</h2>
+                <button id="theme-toggle">🌙</button>
+            </div>
+            <div class="panel-section">
+                <h3>Acciones</h3>
+                <div class="action-buttons">
+                    <button id="add-note">➕ Nueva Nota</button>
+                    <button id="export-json">📤 Exportar JSON</button>
+                    <label for="import-json" class="custom-file-upload">📥 Importar JSON</label>
+                    <input type="file" id="import-json" accept=".json" />
+                    <button onclick="deletePastNotes()">🧹 Borrar Pasadas</button>
+                </div>
+            </div>
+            <div class="panel-section">
+                <h3>📝 Nota Rápida</h3>
+                <textarea id="quick-note" placeholder="Escribe algo rápido..."></textarea>
+            </div>
+            <div class="panel-section">
+                <h3>🔗 Enlaces Rápidos</h3>
+                <div class="link-group">
+                    <input type="url" id="link-input" placeholder="https://ejemplo.com" />
+                    <button id="add-link">Añadir</button>
+                </div>
+                <ul id="link-list"></ul>
+            </div>
+        </aside>
+    </main>
+
+    <footer id="reminder-bar">
+        <h4>⏰ Próximas entregas:</h4>
+        <ul id="reminder-list"></ul>
+    </footer>
+
+    <!-- Carga de Scripts (JS) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <script src="app.js"></script>
+    
+    <!-- **** LÍNEA CORREGIDA Y AÑADIDA **** -->
+    <!-- Cargamos el editor DESPUÉS de app.js para que pueda modificar el objeto NotesApp -->
+    <script src="editor-modal.js"></script>
+    
+    <script src="calendar-view.js"></script>
+    <script src="filter-type.js"></script>
+    <script src="search-notes.js"></script>
+    <script src="ui-interactions.js"></script>
+    
+</body>
+</html>
