@@ -3,7 +3,7 @@
 // ==============================================================
 
 // <-- ¡ACCIÓN! Pega aquí la URL de tu backend en Render
-const API_BASE_URL = "https://TU_URL_DE_RENDER.onrender.com";
+const API_BASE_URL = "https://notas-app-backend-q1ne.onrender.com";
 
 const NotesApp = {
   // (Propiedades existentes sin cambios)
