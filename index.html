@@ -1,62 +1,85 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <!-- ... (tu head no cambia) ... -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Línea de Tiempo de Notas</title>
-
     <link rel="stylesheet" href="style.css" />
     <meta name="theme-color" content="#64351b" />
     <link rel="manifest" href="manifest.json" /> 
     <link rel="icon" href="favicon.ico" sizes="any">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <button class="panel-toggle">☰</button>
 
-    <main id="main-container">
-        <div id="columns-container"></div>
-        <aside id="control-panel">
-            <div class="panel-header">
-                <h2>🛠️ Panel de Control</h2>
-                <button id="theme-toggle">🌙</button>
-            </div>
-            <div class="panel-section">
-                <h3>Acciones</h3>
-                <div class="action-buttons">
-                    <button id="add-note">➕ Nueva Nota</button>
-                    <button id="export-json">📤 Exportar JSON</button>
-                    <label for="import-json" class="custom-file-upload">📥 Importar JSON</label>
-                    <input type="file" id="import-json" accept=".json" />
-                    <button onclick="deletePastNotes()">🧹 Borrar Pasadas</button>
-                </div>
-            </div>
-            <div class="panel-section">
-                <h3>📝 Nota Rápida</h3>
-                <textarea id="quick-note" placeholder="Escribe algo rápido..."></textarea>
-            </div>
-            <div class="panel-section">
-                <h3>🔗 Enlaces Rápidos</h3>
-                <div class="link-group">
-                    <input type="url" id="link-input" placeholder="https://ejemplo.com" />
-                    <button id="add-link">Añadir</button>
-                </div>
-                <ul id="link-list"></ul>
-            </div>
-        </aside>
-    </main>
+    <!-- ======================================================= -->
+    <!-- NUEVO: CONTENEDOR PARA EL ESTADO "NO AUTENTICADO"       -->
+    <!-- ======================================================= -->
+    <div id="auth-container" style="display: none; text-align: center; padding: 50px;">
+        <h1>Bienvenido a tu App de Notas</h1>
+        <p>Por favor, inicia sesión para continuar.</p>
+        <button id="login-button" style="padding: 15px 30px; font-size: 1.2em; cursor: pointer;">
+            🚀 Iniciar Sesión con Google
+        </button>
+    </div>
 
-    <footer id="reminder-bar">
-        <h4>⏰ Próximas entregas:</h4>
-        <ul id="reminder-list"></ul>
-    </footer>
+    <!-- ======================================================= -->
+    <!-- MODIFICADO: ENVOLVEMOS LA APP PRINCIPAL EN UN CONTENEDOR -->
+    <!-- ======================================================= -->
+    <div id="app-container" style="display: none; height: 100vh; display: flex; flex-direction: column;">
+        
+        <button class="panel-toggle">☰</button>
+
+        <main id="main-container">
+            <div id="columns-container"></div>
+            <aside id="control-panel">
+                <!-- NUEVO: SECCIÓN PARA MOSTRAR EL USUARIO Y BOTÓN DE LOGOUT -->
+        
+                <div class="panel-header">
+                    <h2>🛠️ Panel de Control</h2>
+                    <button id="theme-toggle">🌙</button>
+                </div>
+                <div class="panel-section">
+                    <h3>Acciones</h3>
+                    <div class="action-buttons">
+                        <button id="add-note">➕ Nueva Nota</button>
+                        <button id="export-json">📤 Exportar JSON</button>
+                        <label for="import-json" class="custom-file-upload">📥 Importar JSON</label>
+                        <input type="file" id="import-json" accept=".json" />
+                        <button onclick="deletePastNotes()">🧹 Borrar Pasadas</button>
+                    </div>
+                </div>
+                <div class="panel-section">
+                    <h3>📝 Nota Rápida</h3>
+                    <textarea id="quick-note" placeholder="Escribe algo rápido..."></textarea>
+                </div>
+                <div class="panel-section">
+                    <h3>🔗 Enlaces Rápidos</h3>
+                    <div class="link-group">
+                        <input type="url" id="link-input" placeholder="https://ejemplo.com" />
+                        <button id="add-link">Añadir</button>
+                    </div>
+                    <ul id="link-list"></ul>
+                    <div id="user-session-info" class="panel-section" style="text-align: center;">
+                    <p id="user-email" style="font-weight: bold; word-break: break-all;"></p>
+                    <button id="logout-button">Cerrar Sesión</button>
+                </div>
+                </div>
+            </aside>
+        </main>
+
+        <footer id="reminder-bar">
+            <h4>⏰ Próximas entregas:</h4>
+            <ul id="reminder-list"></ul>
+        </footer>
+    </div>
+
 
     <!-- Carga de Scripts (JS) -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    
     <script src="app.js"></script>
-    
-    <!-- Cargamos los módulos DESPUÉS de app.js para que puedan modificar el objeto NotesApp -->
     <script src="editor-modal.js"></script>
     <script src="calendar-view.js"></script>
     <script src="filter-type.js"></script>

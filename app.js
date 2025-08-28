@@ -1,228 +1,281 @@
 // ==============================================================
-// 📱 APLICACIÓN DE NOTAS - VERSIÓN 5.0 (CON ADJUNTOS)
+// 📱 APLICACIÓN DE NOTAS - VERSIÓN 6.0 (CON AUTENTICACIÓN)
 // ==============================================================
 
-// <-- ¡ACCIÓN! Pega aquí la URL de tu backend en Render
+// --- CONFIGURACIÓN DE SUPABASE ---
+const SUPABASE_URL = 'https://vtxcjzglafbhdcrehamc.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0eGNqemdsYWZiaGRjcmVoYW1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4NDQzMTIsImV4cCI6MjA3MTQyMDMxMn0.Mc2ot-pr4XVt0pFfbydDu2aCUhduuhT3Tc54tYQfu60';
+
+const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// --- CONFIGURACIÓN DE LA API ---
 const API_BASE_URL = "https://notas-app-backend-q1ne.onrender.com";
 
-const NotesApp = {
-  notes: new Map(), quickNote: "", links: [], columnNames: {},
-  COLORS: [ { name: "Amarillo", value: "#f1e363ff" }, { name: "Azul", value: "#81d4fa" }, { name: "Verde", value: "#78a347ff" }, { name: "Rosa", value: "#b16982ff" }, { name: "Lila", value: "#8b5794ff" }, { name: "Naranja", value: "#ce730cff" }, { name: "Turquesa", value: "#558f97ff" }, { name: "Gris", value: "#afa4a4ff" } ],
+// ==============================================================
+// 🔐 MÓDULO DE AUTENTICACIÓN
+// ==============================================================
+const AuthManager = {
+    session: null,
 
-  // --- MÉTODOS DE API Y MANEJO DE ESTADO ---
-  async refreshAllData() {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/notes`);
-      if (!response.ok) throw new Error("No se pudo obtener los datos del servidor");
-      const notesFromServer = await response.json();
-      this.notes.clear();
-      (notesFromServer || []).forEach(n => this.notes.set(n.id, n));
-      this.renderNotes();
-    } catch (error) { console.error('❌ Error al recargar datos:', error); }
-  },
-
-  async apiUpdate(note) {
-    const { fecha, hora, ...noteToSend } = note;
-    try {
-      await fetch(`${API_BASE_URL}/api/notes/${note.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(noteToSend) });
-      await this.refreshAllData();
-    } catch (error) { console.error(`❌ Error al actualizar nota ${note.id}:`, error); }
-  },
-  
-  // <-- ¡NUEVA FUNCIÓN PARA MANEJAR LA SUBIDA DE ARCHIVOS! -->
-  async handleFileUpload(noteId, file) {
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { // Límite de 5MB
-        alert("❌ El archivo es demasiado grande. El límite es de 5MB.");
-        return;
-    }
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/notes/${noteId}/upload`, {
-            method: 'POST',
-            body: formData,
+    init() {
+        // Escucha cambios en el estado de autenticación (login, logout)
+        supabase.auth.onAuthStateChange((event, session) => {
+            this.session = session;
+            this.renderUI();
         });
+    },
 
-        if (!response.ok) {
-            throw new Error('Error en la respuesta del servidor.');
+    // Dibuja la UI correcta dependiendo de si hay sesión o no
+    renderUI() {
+        const authContainer = document.getElementById('auth-container');
+        const appContainer = document.getElementById('app-container');
+
+        if (this.session) {
+            // Usuario autenticado
+            authContainer.style.display = 'none';
+            appContainer.style.display = 'flex'; // Usamos flex para que ocupe toda la altura
+
+            const userEmailEl = document.getElementById('user-email');
+            if (userEmailEl) {
+                userEmailEl.textContent = this.session.user.email;
+            }
+
+            // Inicia la aplicación principal solo si no ha sido iniciada
+            if (!NotesApp.isInitialized) {
+                NotesApp.init();
+            }
+        } else {
+            // Usuario no autenticado
+            authContainer.style.display = 'block';
+            appContainer.style.display = 'none';
         }
+    },
 
-        alert('✅ Archivo subido con éxito!');
-        await this.refreshAllData(); // Recargar todo para mostrar el nuevo enlace
+    // Funciones de login/logout
+    async signInWithGoogle() {
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+        });
+        if (error) console.error("Error al iniciar sesión:", error);
+    },
 
-    } catch (error) {
-        console.error('❌ Error al subir el archivo:', error);
-        alert('❌ Hubo un problema al subir el archivo.');
+   async signOut() {
+    // Primera confirmación
+    const firstConfirm = confirm("¿Estás seguro de que quieres cerrar sesión?");
+
+    if (firstConfirm) {
+        // Segunda confirmación
+        const secondConfirm = confirm("Esta acción terminará tu sesión actual. ¿Continuar?");
+        
+        if (secondConfirm) {
+            // Solo si ambas confirmaciones son positivas, cerramos la sesión
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+                console.error("Error al cerrar sesión:", error);
+                alert("Hubo un error al intentar cerrar la sesión.");
+            }
+        }
     }
-  },
+},
 
-  // --- ACCIONES DEL USUARIO ---
-  async createNote() {
-    const noteData = { nombre: "Nueva Nota", fecha_hora: null };
-    try {
-      await fetch(`${API_BASE_URL}/api/notes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(noteData) });
-      await this.refreshAllData();
-    } catch (error) { console.error('❌ Error al crear nota:', error); }
-  },
-
-  async handleDateTimeChange(note, dateInput, timeInput) {
-    const dateValue = dateInput.value; const timeValue = timeInput.value;
-    let new_fecha_hora = null;
-    if (dateValue) {
-      const effectiveTime = timeValue || '00:00';
-      new_fecha_hora = `${dateValue}T${effectiveTime}:00.000Z`;
+    getToken() {
+        return this.session?.access_token || null;
     }
-    if (note.fecha_hora !== new_fecha_hora) {
-      note.fecha_hora = new_fecha_hora;
-      await this.apiUpdate(note);
-    }
-  },
-  
-  async deletePastNotes() {
-    const today = new Date().toISOString();
-    const notesToDeleteIds = Array.from(this.notes.values()).filter(n => n.fecha_hora && n.fecha_hora < today && n.tipo === 'Entrega').map(n => n.id);
-    if (notesToDeleteIds.length === 0) { alert("👍 No hay entregas antiguas para eliminar."); return; }
-    if (!confirm(`🧹 ¿Seguro que quieres borrar ${notesToDeleteIds.length} entrega(s) pasada(s)?`)) return;
-    try {
-      const deletePromises = notesToDeleteIds.map(id => fetch(`${API_BASE_URL}/api/notes/${id}`, { method: 'DELETE' }));
-      await Promise.all(deletePromises);
-      await this.refreshAllData();
-      alert(`🧹 ${notesToDeleteIds.length} entregas antiguas fueron eliminadas.`);
-    } catch (error) { console.error('❌ Error durante el borrado en lote:', error); await this.refreshAllData(); }
-  },
-  
-  // --- LÓGICA DE RENDERIZADO ---
-  renderNotes() { const container = document.getElementById("columns-container"); container.innerHTML = ""; const grouped = this.groupNotesByColor(); for (let [color, group] of Object.entries(grouped)) { this.createColumnForColor(color, group, container); } this.updateReminders(); },
-  sortNotes(a, b) { if (b.fijada && !a.fijada) return 1; if (a.fijada && !b.fijada) return -1; const dateA = a.fecha_hora ? new Date(a.fecha_hora) : null; const dateB = b.fecha_hora ? new Date(b.fecha_hora) : null; if (!dateA && dateB) return 1; if (dateA && !dateB) return -1; if (!dateA && !dateB) return 0; return dateA - dateB; },
-  groupNotesByColor() { const grouped = {}; for (let note of this.notes.values()) { if (!grouped[note.color]) grouped[note.color] = []; grouped[note.color].push(note); } for (let group of Object.values(grouped)) { group.sort(this.sortNotes); } return grouped; },
-  createColumnForColor(c, n, cont) { const col = document.createElement("div"); col.className = "column"; const d = this.COLORS.find(cl => cl.value === c)?.name || "Sin nombre"; const t = this.createColumnTitle(c, d); col.appendChild(t); n.forEach(note => { const el = this.createNoteElement(note); col.appendChild(el); }); cont.appendChild(col); },
-  createColumnTitle(c, d) { const i = document.createElement("input"); i.type = "text"; i.placeholder = d; i.value = this.columnNames[c] || d; Object.assign(i.style, { fontWeight: "bold", fontSize: "1.1em", marginBottom: "0.5em", border: "none", borderBottom: "2px solid #ccc", background: "transparent", textAlign: "center", width: "100%" }); i.oninput = () => { this.columnNames[c] = i.value; localStorage.setItem('columnNames', JSON.stringify(this.columnNames)); }; return i; },
-  
-  // <-- MODIFICADO: Ahora añade el enlace del adjunto -->
-  createNoteElement(n) { 
-    const d = document.createElement("div"); d.className = "note"; d.dataset.noteId = n.id; 
-    this.styleNoteElement(d, n); 
-    const l = this.createTypeLabel(n); 
-    const i = this.createNameInput(n); 
-    const s = this.createTypeSelect(n, l); 
-    const t = this.createContentArea(n); 
-    const attachmentLink = this.createAttachmentLink(n); // <-- NUEVO
-    const ctrl = this.createControls(n); 
-    const cc = this.getContrastColor(n.color); 
-    i.style.color = cc; t.style.color = cc; 
-    d.append(l, i, s, t, attachmentLink, ctrl); // <-- MODIFICADO
-    return d; 
-  },
-
-  styleNoteElement(d, n) { d.style.backgroundColor = n.color; d.style.color = this.getContrastColor(n.color); d.style.paddingLeft = "0.5rem"; if (n.tipo === "Clase") { d.style.borderLeft = "5px solid #1976d2"; } else if (n.tipo === "Entrega") { d.style.borderLeft = "5px solid #d32f2f"; } },
-  createDateInput(n, t) { const i = document.createElement("input"); i.type = "date"; i.value = n.fecha || ''; i.onchange = () => this.handleDateTimeChange(n, i, t); return i; },
-  createTimeInput(n, d) { const i = document.createElement("input"); i.type = "time"; i.value = n.hora || ''; i.style.width = "75px"; i.onchange = () => this.handleDateTimeChange(n, d, i); return i; },
-  
-  // <-- MODIFICADO: Añadido el botón de subir archivo -->
-  createControls(n) {
-    const c = document.createElement("div"); c.className = "controls"; let d, t;
-    t = this.createTimeInput(n, d); d = this.createDateInput(n, t);
-    
-    const editBtn = document.createElement("button");
-    editBtn.textContent = "📝"; editBtn.title = "Abrir editor avanzado";
-    editBtn.onclick = () => this.Editor.open(n.id);
-
-    // <-- NUEVO BOTÓN PARA SUBIR ARCHIVOS -->
-    const uploadBtn = document.createElement("button");
-    uploadBtn.textContent = "📎";
-    uploadBtn.title = "Adjuntar archivo";
-    uploadBtn.onclick = () => {
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = ".pdf,.jpg,.jpeg,.png,.txt"; // Aceptamos varios tipos de archivo
-        fileInput.onchange = (e) => this.handleFileUpload(n.id, e.target.files[0]);
-        fileInput.click();
-    };
-    
-    const s = this.createColorSelect(n);
-    const b = this.createDeleteButton(n);
-    const p = this.createPinButton(n);
-
-    c.append(d, t, s, editBtn, uploadBtn, b, p); // <-- MODIFICADO
-    return c;
-  },
-  
-  // <-- ¡NUEVA FUNCIÓN PARA CREAR EL ENLACE DEL ADJUNTO! -->
-  createAttachmentLink(note) {
-    const container = document.createElement('div');
-    if (note.attachment_url && note.attachment_filename) {
-        container.style.marginTop = "0.5rem";
-        const link = document.createElement('a');
-        link.href = note.attachment_url;
-        link.target = "_blank";
-        link.textContent = `📄 ${note.attachment_filename}`;
-        link.style.color = this.getContrastColor(note.color);
-        link.style.textDecoration = "underline";
-        link.style.fontSize = "0.85rem";
-        container.appendChild(link);
-    }
-    return container;
-  },
-
-  createTypeLabel(n) { const l = document.createElement("div"); l.className = "note-type-label"; l.textContent = n.tipo || "Clase"; Object.assign(l.style, { fontSize: "0.7em", fontWeight: "bold", marginBottom: "0.2em" }); return l; },
-  createNameInput(n) { const i = document.createElement("input"); i.type = "text"; i.placeholder = "Título..."; i.value = n.nombre || ""; i.oninput = () => { n.nombre = i.value; this.debouncedSave(n.id); }; return i; },
-  createContentArea(n) { const t = document.createElement("textarea"); t.value = n.contenido; t.oninput = () => { n.contenido = t.value; this.debouncedSave(n.id); }; return t; },
-  createTypeSelect(n, l) { const s = document.createElement("select"); ["Clase", "Entrega"].forEach(t => { const o = document.createElement("option"); o.value = t; o.textContent = t; if (t === n.tipo) o.selected = true; s.appendChild(o); }); s.addEventListener("change", () => { n.tipo = s.value; l.textContent = s.value; this.styleNoteElement(s.closest('.note'), n); this.apiUpdate(n); }); return s; },
-  createColorSelect(n) { const s = document.createElement("select"); this.COLORS.forEach(c => { const o = document.createElement("option"); o.value = c.value; o.textContent = c.name; if (c.value === n.color) o.selected = true; s.appendChild(o); }); s.onchange = () => { n.color = s.value; this.apiUpdate(n); }; return s; },
-  createPinButton(n) { const b = document.createElement("button"); b.textContent = n.fijada ? "📌" : "📍"; b.onclick = () => { n.fijada = !n.fijada; this.apiUpdate(n); }; return b; },
-  createDeleteButton(n) { const b = document.createElement("button"); b.textContent = "🗑️"; b.onclick = async () => { if (confirm("¿Seguro que quieres borrar esta nota?")) { await fetch(`${API_BASE_URL}/api/notes/${n.id}`, { method: 'DELETE' }); await this.refreshAllData(); } }; return b; },
-  
-  updateReminders() { const rl = document.getElementById("reminder-list"); const t = new Date(); const u = [...this.notes.values()].filter(n => n.fecha_hora && new Date(n.fecha_hora) >= t && n.tipo === "Entrega").sort(this.sortNotes).slice(0, 5); rl.innerHTML = ""; u.forEach(n => { const li = document.createElement("li"); li.textContent = `${n.fecha}${n.hora ? ' ' + n.hora : ''} - ${n.nombre || "(sin título)"}`; rl.appendChild(li); }); this.renderLinks(); },
-  renderLinks() { const l = document.getElementById("link-list"); if(!l) return; l.innerHTML = ""; this.links.forEach((u, i) => { const li = document.createElement("li"); const a = document.createElement("a"); a.href = u; a.target = "_blank"; a.textContent = u; const d = document.createElement("button"); d.textContent = "🗑️"; d.onclick = () => { this.links.splice(i, 1); this.renderLinks(); }; li.append(a, d); l.appendChild(li); }); },
-  getContrastColor(h) { if(!h) return "#000"; const r=parseInt(h.substr(1,2),16),g=parseInt(h.substr(3,2),16),b=parseInt(h.substr(5,2),16); return ((.299*r+.587*g+.114*b)/255)>.6?"#000":"#fff"; },
-  exportData() { const d = [...this.notes.values()].map(({ fecha, hora, ...rest }) => rest); const data = { notes: d, quickNote: document.getElementById("quick-note")?.value||"", links: this.links, columnNames: this.columnNames }; const b = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }); const u = URL.createObjectURL(b); const a = document.createElement("a"); a.href = u; a.download = "notas.json"; a.click(); URL.revokeObjectURL(u); },
-  async importData(file) {
-    if (!file) return; const reader = new FileReader();
-    reader.onload = async () => {
-      if (!confirm("¿Estás seguro? Esto reemplazará TODAS las notas actuales.")) return;
-      try {
-        const data = JSON.parse(reader.result);
-        if (data.quickNote) await this.saveQuickNoteToServer(data.quickNote);
-        if (data.columnNames) { this.columnNames = data.columnNames; localStorage.setItem('columnNames', JSON.stringify(this.columnNames));}
-        await this.refreshAllData();
-        const currentNoteIds = Array.from(this.notes.keys());
-        if(currentNoteIds.length > 0) { const deletePromises = currentNoteIds.map(id => fetch(`${API_BASE_URL}/api/notes/${id}`, { method: 'DELETE' })); await Promise.all(deletePromises); }
-        const notesToCreate = (data.notes || []).map(n => { let finalNote = {...n}; if (finalNote.fecha_hora) finalNote.fecha_hora = new Date(finalNote.fecha_hora).toISOString(); delete finalNote.id; return finalNote; });
-        if (notesToCreate.length > 0) { const postPromises = notesToCreate.map(note => fetch(`${API_BASE_URL}/api/notes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(note) })); await Promise.all(postPromises); }
-        await this.refreshAllData();
-        alert("✅ ¡Éxito! Los datos han sido importados.");
-      } catch (error) { alert("❌ Error durante la importación."); console.error('❌ Error detallado:', error); await this.refreshAllData(); }
-    };
-    reader.readAsText(file);
-  },
-  
-  debouncedSave(noteId) { if (this.debounceTimeout) clearTimeout(this.debounceTimeout); this.debounceTimeout = setTimeout(() => { const note = this.notes.get(noteId); if (note) this.apiUpdate(note); }, 1000); },
-  async saveQuickNoteToServer(c) { try { await fetch(`${API_BASE_URL}/api/settings/quicknote`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: c }) }); } catch (e) { console.error('❌ Error al guardar nota rápida:', e); } },
-  
-  setupEventListeners() {
-    document.getElementById("add-note").onclick = () => this.createNote();
-    document.getElementById("export-json").onclick = () => this.exportData();
-    document.getElementById("import-json").onchange = (e) => this.importData(e.target.files[0]);
-    document.getElementById("add-link").onclick = () => { const i = document.getElementById("link-input"); if (i.value.trim()) { this.links.push(i.value.trim()); i.value = ""; this.renderLinks(); } };
-    const q = document.getElementById("quick-note");
-    q.addEventListener('input', () => { if (this.quickNoteDebounce) clearTimeout(this.quickNoteDebounce); this.quickNoteDebounce = setTimeout(() => this.saveQuickNoteToServer(q.value), 1000); });
-    window.deletePastNotes = () => this.deletePastNotes();
-  },
-
-  async init() {
-    console.log('🚀 Iniciando aplicación...');
-    this.Editor.init(this);
-    this.setupEventListeners();
-    try { const r = await fetch(`${API_BASE_URL}/api/settings/quicknote`); const d = await r.json(); document.getElementById('quick-note').value = d.value || ''; } catch (e) { console.error('❌ No se pudo cargar la nota rápida:', e); }
-    const s = localStorage.getItem('columnNames'); if (s) { try { this.columnNames = JSON.parse(s); } catch (e) { this.columnNames = {}; } }
-    await this.refreshAllData();
-    this.renderLinks();
-    console.log('✅ Aplicación iniciada correctamente');
-  }
 };
 
-document.addEventListener('DOMContentLoaded', () => NotesApp.init());
-window.NotesApp = NotesApp;
+// ==============================================================
+// 📱 MÓDULO PRINCIPAL DE LA APLICACIÓN
+// ==============================================================
+const NotesApp = {
+    isInitialized: false,
+    notes: new Map(), quickNote: "", links: [], columnNames: {},
+    COLORS: [ { name: "Amarillo", value: "#f1e363ff" }, { name: "Azul", value: "#81d4fa" }, { name: "Verde", value: "#78a347ff" }, { name: "Rosa", value: "#b16982ff" }, { name: "Lila", value: "#8b5794ff" }, { name: "Naranja", value: "#ce730cff" }, { name: "Turquesa", value: "#558f97ff" }, { name: "Gris", value: "#afa4a4ff" } ],
+
+    // --- MÉTODOS DE API PROTEGIDOS ---
+    async fetchWithAuth(url, options = {}) {
+        const token = AuthManager.getToken();
+        if (!token) {
+            console.error("No hay token de autenticación. El usuario debe iniciar sesión.");
+            return null;
+        }
+
+        const headers = {
+            ...options.headers,
+            'Authorization': `Bearer ${token}`
+        };
+
+        return fetch(url, { ...options, headers });
+    },
+
+    async refreshAllData() {
+        try {
+            const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes`);
+            if (!response || !response.ok) throw new Error("No se pudo obtener los datos del servidor");
+            const notesFromServer = await response.json();
+            this.notes.clear();
+            (notesFromServer || []).forEach(n => this.notes.set(n.id, n));
+            this.renderNotes();
+        } catch (error) { console.error('❌ Error al recargar datos:', error); }
+    },
+
+    async apiUpdate(note) {
+        const { fecha, hora, ...noteToSend } = note;
+        try {
+            await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${note.id}`, { 
+                method: 'PUT', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(noteToSend) 
+            });
+            await this.refreshAllData();
+        } catch (error) { console.error(`❌ Error al actualizar nota ${note.id}:`, error); }
+    },
+    
+    async handleFileUpload(noteId, file) {
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) { 
+            alert("❌ El archivo es demasiado grande. El límite es de 5MB.");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${noteId}/upload`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response || !response.ok) {
+                throw new Error('Error en la respuesta del servidor.');
+            }
+
+            alert('✅ Archivo subido con éxito!');
+            await this.refreshAllData();
+
+        } catch (error) {
+            console.error('❌ Error al subir el archivo:', error);
+            alert('❌ Hubo un problema al subir el archivo.');
+        }
+    },
+
+    async createNote() {
+        const noteData = { nombre: "Nueva Nota", fecha_hora: null };
+        try {
+            await this.fetchWithAuth(`${API_BASE_URL}/api/notes`, { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(noteData) 
+            });
+            await this.refreshAllData();
+        } catch (error) { console.error('❌ Error al crear nota:', error); }
+    },
+    
+    // --- FUNCIONES DE LÓGICA Y RENDERIZADO (RESTAURADAS) ---
+    async handleDateTimeChange(note, dateInput, timeInput) {
+        const dateValue = dateInput.value; const timeValue = timeInput.value;
+        let new_fecha_hora = null;
+        if (dateValue) {
+            const effectiveTime = timeValue || '00:00';
+            new_fecha_hora = `${dateValue}T${effectiveTime}:00.000Z`;
+        }
+        if (note.fecha_hora !== new_fecha_hora) {
+            note.fecha_hora = new_fecha_hora;
+            await this.apiUpdate(note);
+        }
+    },
+      
+    async deletePastNotes() {
+        const today = new Date().toISOString();
+        const notesToDeleteIds = Array.from(this.notes.values()).filter(n => n.fecha_hora && n.fecha_hora < today && n.tipo === 'Entrega').map(n => n.id);
+        if (notesToDeleteIds.length === 0) { alert("👍 No hay entregas antiguas para eliminar."); return; }
+        if (!confirm(`🧹 ¿Seguro que quieres borrar ${notesToDeleteIds.length} entrega(s) pasada(s)?`)) return;
+        try {
+            const deletePromises = notesToDeleteIds.map(id => this.fetchWithAuth(`${API_BASE_URL}/api/notes/${id}`, { method: 'DELETE' }));
+            await Promise.all(deletePromises);
+            await this.refreshAllData();
+            alert(`🧹 ${notesToDeleteIds.length} entregas antiguas fueron eliminadas.`);
+        } catch (error) { console.error('❌ Error durante el borrado en lote:', error); await this.refreshAllData(); }
+    },
+      
+    renderNotes() { const container = document.getElementById("columns-container"); container.innerHTML = ""; const grouped = this.groupNotesByColor(); for (let [color, group] of Object.entries(grouped)) { this.createColumnForColor(color, group, container); } this.updateReminders(); },
+    sortNotes(a, b) { if (b.fijada && !a.fijada) return 1; if (a.fijada && !b.fijada) return -1; const dateA = a.fecha_hora ? new Date(a.fecha_hora) : null; const dateB = b.fecha_hora ? new Date(b.fecha_hora) : null; if (!dateA && dateB) return 1; if (dateA && !dateB) return -1; if (!dateA && !dateB) return 0; return dateA - dateB; },
+    groupNotesByColor() { const grouped = {}; for (let note of this.notes.values()) { if (!grouped[note.color]) grouped[note.color] = []; grouped[note.color].push(note); } for (let group of Object.values(grouped)) { group.sort(this.sortNotes); } return grouped; },
+    createColumnForColor(c, n, cont) { const col = document.createElement("div"); col.className = "column"; const d = this.COLORS.find(cl => cl.value === c)?.name || "Sin nombre"; const t = this.createColumnTitle(c, d); col.appendChild(t); n.forEach(note => { const el = this.createNoteElement(note); col.appendChild(el); }); cont.appendChild(col); },
+    createColumnTitle(c, d) { const i = document.createElement("input"); i.type = "text"; i.placeholder = d; i.value = this.columnNames[c] || d; Object.assign(i.style, { fontWeight: "bold", fontSize: "1.1em", marginBottom: "0.5em", border: "none", borderBottom: "2px solid #ccc", background: "transparent", textAlign: "center", width: "100%" }); i.oninput = () => { this.columnNames[c] = i.value; localStorage.setItem('columnNames', JSON.stringify(this.columnNames)); }; return i; },
+    createNoteElement(n) { const d = document.createElement("div"); d.className = "note"; d.dataset.noteId = n.id; this.styleNoteElement(d, n); const l = this.createTypeLabel(n); const i = this.createNameInput(n); const s = this.createTypeSelect(n, l); const t = this.createContentArea(n); const attachmentLink = this.createAttachmentLink(n); const ctrl = this.createControls(n); const cc = this.getContrastColor(n.color); i.style.color = cc; t.style.color = cc; d.append(l, i, s, t, attachmentLink, ctrl); return d; },
+    styleNoteElement(d, n) { d.style.backgroundColor = n.color; d.style.color = this.getContrastColor(n.color); d.style.paddingLeft = "0.5rem"; if (n.tipo === "Clase") { d.style.borderLeft = "5px solid #1976d2"; } else if (n.tipo === "Entrega") { d.style.borderLeft = "5px solid #d32f2f"; } },
+    createDateInput(n, t) { const i = document.createElement("input"); i.type = "date"; i.value = n.fecha || ''; i.onchange = () => this.handleDateTimeChange(n, i, t); return i; },
+    createTimeInput(n, d) { const i = document.createElement("input"); i.type = "time"; i.value = n.hora || ''; i.style.width = "75px"; i.onchange = () => this.handleDateTimeChange(n, d, i); return i; },
+    createControls(n) { const c = document.createElement("div"); c.className = "controls"; let d, t; t = this.createTimeInput(n, d); d = this.createDateInput(n, t); const editBtn = document.createElement("button"); editBtn.textContent = "📝"; editBtn.title = "Abrir editor avanzado"; editBtn.onclick = () => this.Editor.open(n.id); const uploadBtn = document.createElement("button"); uploadBtn.textContent = "📎"; uploadBtn.title = "Adjuntar archivo"; uploadBtn.onclick = () => { const fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.accept = ".pdf,.jpg,.jpeg,.png,.txt"; fileInput.onchange = (e) => this.handleFileUpload(n.id, e.target.files[0]); fileInput.click(); }; const s = this.createColorSelect(n); const b = this.createDeleteButton(n); const p = this.createPinButton(n); c.append(d, t, s, editBtn, uploadBtn, b, p); return c; },
+    createAttachmentLink(note) { const container = document.createElement('div'); if (note.attachment_url && note.attachment_filename) { container.style.marginTop = "0.5rem"; const link = document.createElement('a'); link.href = note.attachment_url; link.target = "_blank"; link.textContent = `📄 ${note.attachment_filename}`; link.style.color = this.getContrastColor(note.color); link.style.textDecoration = "underline"; link.style.fontSize = "0.85rem"; container.appendChild(link); } return container; },
+    createTypeLabel(n) { const l = document.createElement("div"); l.className = "note-type-label"; l.textContent = n.tipo || "Clase"; Object.assign(l.style, { fontSize: "0.7em", fontWeight: "bold", marginBottom: "0.2em" }); return l; },
+    createNameInput(n) { const i = document.createElement("input"); i.type = "text"; i.placeholder = "Título..."; i.value = n.nombre || ""; i.oninput = () => { n.nombre = i.value; this.debouncedSave(n.id); }; return i; },
+    createContentArea(n) { const t = document.createElement("textarea"); t.value = n.contenido; t.oninput = () => { n.contenido = t.value; this.debouncedSave(n.id); }; return t; },
+    createTypeSelect(n, l) { const s = document.createElement("select"); ["Clase", "Entrega"].forEach(t => { const o = document.createElement("option"); o.value = t; o.textContent = t; if (t === n.tipo) o.selected = true; s.appendChild(o); }); s.addEventListener("change", () => { n.tipo = s.value; l.textContent = s.value; this.styleNoteElement(s.closest('.note'), n); this.apiUpdate(n); }); return s; },
+    createColorSelect(n) { const s = document.createElement("select"); this.COLORS.forEach(c => { const o = document.createElement("option"); o.value = c.value; o.textContent = c.name; if (c.value === n.color) o.selected = true; s.appendChild(o); }); s.onchange = () => { n.color = s.value; this.apiUpdate(n); }; return s; },
+    createPinButton(n) { const b = document.createElement("button"); b.textContent = n.fijada ? "📌" : "📍"; b.onclick = () => { n.fijada = !n.fijada; this.apiUpdate(n); }; return b; },
+    createDeleteButton(n) { const b = document.createElement("button"); b.textContent = "🗑️"; b.onclick = async () => { if (confirm("¿Seguro que quieres borrar esta nota?")) { await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${n.id}`, { method: 'DELETE' }); await this.refreshAllData(); } }; return b; },
+    updateReminders() { const rl = document.getElementById("reminder-list"); const t = new Date(); const u = [...this.notes.values()].filter(n => n.fecha_hora && new Date(n.fecha_hora) >= t && n.tipo === "Entrega").sort(this.sortNotes).slice(0, 5); rl.innerHTML = ""; u.forEach(n => { const li = document.createElement("li"); li.textContent = `${n.fecha}${n.hora ? ' ' + n.hora : ''} - ${n.nombre || "(sin título)"}`; rl.appendChild(li); }); this.renderLinks(); },
+    renderLinks() { const l = document.getElementById("link-list"); if(!l) return; l.innerHTML = ""; this.links.forEach((u, i) => { const li = document.createElement("li"); const a = document.createElement("a"); a.href = u; a.target = "_blank"; a.textContent = u; const d = document.createElement("button"); d.textContent = "🗑️"; d.onclick = () => { this.links.splice(i, 1); this.renderLinks(); }; li.append(a, d); l.appendChild(li); }); },
+    getContrastColor(h) { if(!h) return "#000"; const r=parseInt(h.substr(1,2),16),g=parseInt(h.substr(3,2),16),b=parseInt(h.substr(5,2),16); return ((.299*r+.587*g+.114*b)/255)>.6?"#000":"#fff"; },
+    exportData() { const d = [...this.notes.values()].map(({ fecha, hora, ...rest }) => rest); const data = { notes: d, quickNote: document.getElementById("quick-note")?.value||"", links: this.links, columnNames: this.columnNames }; const b = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }); const u = URL.createObjectURL(b); const a = document.createElement("a"); a.href = u; a.download = "notas.json"; a.click(); URL.revokeObjectURL(u); },
+    async importData(file) { if (!file) return; const reader = new FileReader(); reader.onload = async () => { if (!confirm("¿Estás seguro? Esto reemplazará TODAS las notas actuales.")) return; try { const data = JSON.parse(reader.result); if (data.quickNote) await this.saveQuickNoteToServer(data.quickNote); if (data.columnNames) { this.columnNames = data.columnNames; localStorage.setItem('columnNames', JSON.stringify(this.columnNames));} await this.refreshAllData(); const currentNoteIds = Array.from(this.notes.keys()); if(currentNoteIds.length > 0) { const deletePromises = currentNoteIds.map(id => this.fetchWithAuth(`${API_BASE_URL}/api/notes/${id}`, { method: 'DELETE' })); await Promise.all(deletePromises); } const notesToCreate = (data.notes || []).map(n => { let finalNote = {...n}; if (finalNote.fecha_hora) finalNote.fecha_hora = new Date(finalNote.fecha_hora).toISOString(); delete finalNote.id; return finalNote; }); if (notesToCreate.length > 0) { const postPromises = notesToCreate.map(note => this.fetchWithAuth(`${API_BASE_URL}/api/notes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(note) })); await Promise.all(postPromises); } await this.refreshAllData(); alert("✅ ¡Éxito! Los datos han sido importados."); } catch (error) { alert("❌ Error durante la importación."); console.error('❌ Error detallado:', error); await this.refreshAllData(); } }; reader.readAsText(file); },
+    debouncedSave(noteId) { if (this.debounceTimeout) clearTimeout(this.debounceTimeout); this.debounceTimeout = setTimeout(() => { const note = this.notes.get(noteId); if (note) this.apiUpdate(note); }, 1000); },
+    async saveQuickNoteToServer(c) { try { await this.fetchWithAuth(`${API_BASE_URL}/api/settings/quicknote`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: c }) }); } catch (e) { console.error('❌ Error al guardar nota rápida:', e); } },
+
+    // --- PUNTO DE ENTRADA DE LA APLICACIÓN ---
+    async init() {
+        if (this.isInitialized) return;
+        console.log('🚀 Iniciando aplicación principal...');
+        this.isInitialized = true;
+        
+        this.Editor.init(this);
+        this.setupEventListeners();
+        
+        try { 
+            const response = await this.fetchWithAuth(`${API_BASE_URL}/api/settings/quicknote`); 
+            if (response && response.ok) {
+                const d = await response.json();
+                document.getElementById('quick-note').value = d.value || '';
+            }
+        } catch (e) { console.error('❌ No se pudo cargar la nota rápida:', e); }
+
+        const s = localStorage.getItem('columnNames'); 
+        if (s) { try { this.columnNames = JSON.parse(s); } catch (e) { this.columnNames = {}; } }
+        
+        await this.refreshAllData();
+        this.renderLinks();
+        console.log('✅ Aplicación principal iniciada correctamente');
+    },
+
+    setupEventListeners() {
+        // Eventos de la app principal
+        document.getElementById("add-note").onclick = () => this.createNote();
+        document.getElementById("export-json").onclick = () => this.exportData();
+        document.getElementById("import-json").onchange = (e) => this.importData(e.target.files[0]);
+        document.getElementById("add-link").onclick = () => { const i = document.getElementById("link-input"); if (i.value.trim()) { this.links.push(i.value.trim()); i.value = ""; this.renderLinks(); } };
+        const q = document.getElementById("quick-note");
+        q.addEventListener('input', () => { if (this.quickNoteDebounce) clearTimeout(this.quickNoteDebounce); this.quickNoteDebounce = setTimeout(() => this.saveQuickNoteToServer(q.value), 1000); });
+        window.deletePastNotes = () => this.deletePastNotes();
+    },
+};
+
+// ==============================================================
+// 🚀 INICIO GLOBAL
+// ==============================================================
+document.addEventListener('DOMContentLoaded', () => {
+    // Asignar eventos a los botones de autenticación
+    document.getElementById('login-button').addEventListener('click', () => {
+        AuthManager.signInWithGoogle();
+    });
+
+    document.getElementById('logout-button').addEventListener('click', () => {
+        AuthManager.signOut();
+    });
+
+    // Iniciar el gestor de autenticación
+    AuthManager.init();
+});
+
+window.NotesApp = NotesApp; // Para que los otros módulos puedan accederlo

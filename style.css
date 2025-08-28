@@ -356,3 +356,41 @@ input[type="file"] {
   margin-top: 0.5rem;
   margin-bottom: 0.5rem;
 }
+/* ======================================= */
+/* --- 10. ESTILOS PARA LA SESIÓN DE USUARIO --- */
+/* ======================================= */
+
+/* Contenedor de la información del usuario */
+#user-session-info {
+  margin-top: auto; /* ¡Este truco empuja el div al final del panel flex! */
+  border-top: 1px solid var(--color-subtle-border); /* Añade un separador superior */
+  border-bottom: none; /* Quita el borde inferior que tienen otros .panel-section */
+  padding-top: 1rem;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+/* Párrafo con el email del usuario */
+#user-session-info p {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+/* Botón específico de Cerrar Sesión */
+#logout-button {
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-subtle-border);
+  font-size: 0.9rem;
+  padding: 0.4rem 0.8rem;
+  width: auto; /* Para que no ocupe todo el ancho */
+  transition: all 0.2s ease;
+}
+
+#logout-button:hover {
+  background-color: #d32f2f; /* Rojo al pasar el ratón */
+  color: white;
+  border-color: #d32f2f;
+}
