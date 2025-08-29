@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- ... (tu head no cambia) ... -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Línea de Tiempo de Notas</title>
@@ -10,12 +9,12 @@
     <link rel="manifest" href="manifest.json" /> 
     <link rel="icon" href="favicon.ico" sizes="any">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- El script de Supabase se carga al final con los demás -->
 </head>
 <body>
 
     <!-- ======================================================= -->
-    <!-- NUEVO: CONTENEDOR PARA EL ESTADO "NO AUTENTICADO"       -->
+    <!-- CONTENEDOR PARA EL ESTADO "NO AUTENTICADO"              -->
     <!-- ======================================================= -->
     <div id="auth-container" style="display: none; text-align: center; padding: 50px;">
         <h1>Bienvenido a tu App de Notas</h1>
@@ -26,17 +25,15 @@
     </div>
 
     <!-- ======================================================= -->
-    <!-- MODIFICADO: ENVOLVEMOS LA APP PRINCIPAL EN UN CONTENEDOR -->
+    <!-- CONTENEDOR DE LA APP PRINCIPAL                          -->
     <!-- ======================================================= -->
-    <div id="app-container" style="display: none; height: 100vh; display: flex; flex-direction: column;">
+    <div id="app-container" style="display: none; height: 100vh; flex-direction: column;">
         
         <button class="panel-toggle">☰</button>
 
         <main id="main-container">
             <div id="columns-container"></div>
             <aside id="control-panel">
-                <!-- NUEVO: SECCIÓN PARA MOSTRAR EL USUARIO Y BOTÓN DE LOGOUT -->
-        
                 <div class="panel-header">
                     <h2>🛠️ Panel de Control</h2>
                     <button id="theme-toggle">🌙</button>
@@ -62,10 +59,12 @@
                         <button id="add-link">Añadir</button>
                     </div>
                     <ul id="link-list"></ul>
-                    <div id="user-session-info" class="panel-section" style="text-align: center;">
-                    <p id="user-email" style="font-weight: bold; word-break: break-all;"></p>
-                    <button id="logout-button">Cerrar Sesión</button>
                 </div>
+                
+                <!-- MOVIDO AQUÍ: SECCIÓN PARA MOSTRAR EL USUARIO Y BOTÓN DE LOGOUT -->
+                <div id="user-session-info" class="panel-section">
+                    <p id="user-email"></p>
+                    <button id="logout-button">Cerrar Sesión</button>
                 </div>
             </aside>
         </main>
@@ -77,6 +76,9 @@
     </div>
 
 
+    <!-- ============================================= -->
+    <!--          CARGA DE SCRIPTS (ORDEN CORRECTO)    -->
+    <!-- ============================================= -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="app.js"></script>
