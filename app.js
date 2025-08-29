@@ -6,7 +6,7 @@
 const SUPABASE_URL = 'https://vtxcjzglafbhdcrehamc.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0eGNqemdsYWZiaGRjcmVoYW1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4NDQzMTIsImV4cCI6MjA3MTQyMDMxMn0.Mc2ot-pr4XVt0pFfbydDu2aCUhduuhT3Tc54tYQfu60';
 
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // --- CONFIGURACIÓN DE LA API ---
 const API_BASE_URL = "https://notas-app-backend-q1ne.onrender.com";
@@ -19,7 +19,7 @@ const AuthManager = {
 
     init() {
         // Escucha cambios en el estado de autenticación (login, logout)
-        supabase.auth.onAuthStateChange((event, session) => {
+        supabaseClient.auth.onAuthStateChange((event, session) => {
             this.session = session;
             this.renderUI();
         });
@@ -53,7 +53,7 @@ const AuthManager = {
 
     // Funciones de login/logout
     async signInWithGoogle() {
-        const { error } = await supabase.auth.signInWithOAuth({
+        const { error } = await supabaseClient.auth.signInWithOAuth({
             provider: 'google',
         });
         if (error) console.error("Error al iniciar sesión:", error);
@@ -69,7 +69,7 @@ const AuthManager = {
         
         if (secondConfirm) {
             // Solo si ambas confirmaciones son positivas, cerramos la sesión
-            const { error } = await supabase.auth.signOut();
+            const { error } = await supabaseClient.auth.signOut();
             if (error) {
                 console.error("Error al cerrar sesión:", error);
                 alert("Hubo un error al intentar cerrar la sesión.");
