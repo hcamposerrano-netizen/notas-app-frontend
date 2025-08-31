@@ -14,7 +14,7 @@
 
     <!-- Contenedor para el estado "No Autenticado" -->
     <div id="auth-container" style="display: none; text-align: center; padding: 50px;">
-        <h1>Bienvenido a tu App de Notas epicas ;D</h1>
+        <h1>Bienvenido a tu App de Notas</h1>
         <p>Por favor, inicia sesión para continuar.</p>
         <button id="login-button" style="padding: 15px 30px; font-size: 1.2em; cursor: pointer;">
             🚀 Iniciar Sesión con Google
@@ -38,6 +38,7 @@
                     <h3>Acciones</h3>
                     <div class="action-buttons">
                         <button id="add-note">➕ Nueva Nota</button>
+                        <button id="view-archived-btn">🗄️ Ver Archivadas</button>
                         <button id="export-json">📤 Exportar JSON</button>
                         <label for="import-json" class="custom-file-upload">📥 Importar JSON</label>
                         <input type="file" id="import-json" accept=".json" />
@@ -65,7 +66,10 @@
         </main>
 
         <footer id="reminder-bar">
-            <h4>⏰ Próximas entregas:</h4>
+            <div id="reminder-header">
+                <h4>⏰ Próximas entregas:</h4>
+                <button id="reminder-toggle">▲</button>
+            </div>
             <ul id="reminder-list"></ul>
         </footer>
     </div>
@@ -107,6 +111,7 @@
     </div>
 
     <!-- Carga de Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="app.js"></script>

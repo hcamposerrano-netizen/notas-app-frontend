@@ -6,15 +6,11 @@
   // --- LÓGICA DEL MENÚ DESLIZABLE ---
   const toggleBtn = document.querySelector('.panel-toggle');
   const panel = document.getElementById('control-panel');
-  const mainContent = document.getElementById('main-container');
 
-  if (toggleBtn && panel && mainContent) {
+  if (toggleBtn && panel) {
     toggleBtn.addEventListener('click', (event) => {
       event.stopPropagation();
       panel.classList.toggle('show');
-    });
-    mainContent.addEventListener('click', () => {
-      panel.classList.remove('show');
     });
   }
 
@@ -50,7 +46,7 @@
   }
 
   const toggleDimmer = () => {
-      if(panel) { // Solo ejecuta si el panel existe
+      if(panel) {
         dimmer.classList.toggle('show', panel.classList.contains('show'));
       }
   };
@@ -67,7 +63,6 @@
   window.addEventListener('click', () => {
       document.querySelectorAll('.note-menu.show').forEach(menu => {
           menu.classList.remove('show');
-          // También quitamos la clase activa de la nota padre
           const parentNote = menu.closest('.note');
           if (parentNote) {
             parentNote.classList.remove('note-menu-open');
@@ -75,4 +70,15 @@
       });
   });
 
-})(); // Fin del bloque de función autoejecutable
+  // --- LÓGICA DE LA BARRA DE RECORDATORIOS DESPLEGABLE ---
+  const reminderBar = document.getElementById('reminder-bar');
+  const reminderHeader = document.getElementById('reminder-header');
+
+  if (reminderBar && reminderHeader) {
+      reminderBar.classList.add('collapsed');
+      reminderHeader.addEventListener('click', () => {
+          reminderBar.classList.toggle('collapsed');
+      });
+  }
+
+})();

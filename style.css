@@ -49,7 +49,7 @@ body {
 #columns-container { display: flex; flex: 1; padding: 1rem; padding-right: 2rem; overflow-x: auto; overflow-y: auto; gap: 1rem; align-items: flex-start; }
 .column { background: var(--color-surface); border-radius: 8px; padding: 0.5rem; min-width: 220px; flex-shrink: 0; box-shadow: 0 0 5px var(--shadow-color); transition: background-color 0.3s ease; }
 .column h3, .column input { text-align: center; margin: 0 0 0.5rem 0; user-select: none; background: transparent; border:none; color: var(--color-text-primary); font-size: 1em; font-weight: bold; }
-.note { border-radius: 6px; padding: 0.5rem; margin-bottom: 1rem; box-shadow: 0 0 3px var(--shadow-color); display: flex; flex-direction: column; gap: 0.3rem; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.note { border-radius: 6px; padding: 0.5rem; margin-bottom: 1rem; box-shadow: 0 0 3px var(--shadow-color); display: flex; flex-direction: column; gap: 0.3rem; transition: transform 0.2s ease, box-shadow 0.2s ease; position: relative; }
 .note:hover { transform: scale(1.02); box-shadow: 0 4px 12px var(--shadow-color); z-index: 10; }
 
 .note textarea, .note input {
@@ -189,30 +189,13 @@ input[type="file"] { display: none; }
 .controls { position: relative; display: flex; justify-content: space-between; }
 .more-options-btn { font-size: 1.5rem; padding: 0.2rem 0.8rem; margin-left: auto; line-height: 1; border-radius: 8px; }
 .more-options-btn svg { width: 24px; height: 24px; }
+.note.note-menu-open { z-index: 15; }
 .note-menu { position: absolute; right: 0; top: 100%; background: var(--color-surface); border: 1px solid var(--color-subtle-border); border-radius: 8px; box-shadow: 0 4px 15px var(--shadow-color); z-index: 20; width: 200px; padding: 0.5rem; opacity: 0; transform: translateY(-10px); pointer-events: none; transition: opacity 0.2s ease, transform 0.2s ease; }
 .note-menu.show { opacity: 1; transform: translateY(0); pointer-events: all; }
 .note-menu button { display: flex; align-items: center; gap: 0.8rem; width: 100%; text-align: left; background: transparent; color: var(--color-text-primary); padding: 0.8rem; font-size: 0.9rem; }
 .note-menu button:hover { background-color: var(--color-background); }
-/* EN style.css, busca estas reglas y añade la nueva clase */
-
-/* ANTES:
-.menu-color-select { ... }
-.menu-color-select select { ... }
-*/
-
-/* AHORA (más limpio y eficiente): */
-.menu-color-select, .menu-type-select {
-    padding: 0.8rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    border-top: 1px solid var(--color-subtle-border);
-    margin-top: 0.5rem;
-}
-
-.menu-color-select select, .menu-type-select select {
-    flex-grow: 1;
-}
+.menu-color-select, .menu-type-select { padding: 0.8rem; display: flex; align-items: center; gap: 0.5rem; border-top: 1px solid var(--color-subtle-border); margin-top: 0.5rem; }
+.menu-color-select select, .menu-type-select select { flex-grow: 1; }
 
 #panel-dimmer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 99; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
 #panel-dimmer.show { opacity: 1; pointer-events: all; }
@@ -222,46 +205,20 @@ input[type="file"] { display: none; }
 .note-leaving { opacity: 0; transform: scale(0.9); transition: opacity 0.3s ease, transform 0.3s ease; }
 
 /* --- 10. REGLAS PARA MÓVILES (@media) --- */
-/* EN style.css, REEMPLAZA LA SECCIÓN #10 COMPLETA */
-
-/* --- 10. REGLAS PARA MÓVILES (@media) --- */
 @media (max-width: 768px) {
   #main-container { margin-right: 0; }
-  
   #control-panel { box-shadow: -5px 0 15px var(--shadow-color); transform: translateX(100%); position: fixed; right: 0; top: 0; height: 100vh; z-index: 100; width: 280px; }
   #control-panel.show { transform: translateX(0); }
-  
   #columns-container { flex-direction: column; overflow-x: hidden; padding: 0.8rem; gap: 0.8rem; }
   .column { width: 100%; min-width: unset; margin-bottom: 0; box-sizing: border-box; animation: fadeIn 0.4s ease; }
-  
-  /* ⭐ ¡LÓGICA CORREGIDA! Ocultamos las columnas filtradas SÓLO en móvil ⭐ */
-  .column.column-hidden-by-filter {
-      display: none;
-  }
-  
+  .column.column-hidden-by-filter { display: none; }
   .panel-toggle { display: flex; align-items: center; justify-content: center; position: fixed; top: 1rem; right: 1rem; z-index: 101; background: var(--color-primary-accent); color: white; border: none; border-radius: 50%; width: 50px; height: 50px; font-size: 1.5rem; cursor: pointer; box-shadow: 0 2px 10px var(--shadow-color); }
-  
   .note textarea { font-size: 1rem; }
   #control-panel button { padding: 0.8rem; font-size: 1.1rem; }
-  
   #columns-container.calendar-mode { padding: 1rem; }
   .day-layout { flex-direction: column; }
   .timeline-sidebar { width: 100%; box-sizing: border-box; }
-  
-  /* ⭐ ¡LÓGICA CORREGIDA! Mostramos el panel de filtros SÓLO en móvil ⭐ */
-  #color-filter-panel { 
-      display: flex !important; /* Usamos !important para asegurar que se muestre */
-      align-items: center; 
-      gap: 0.8rem; 
-      padding: 0.8rem; 
-      overflow-x: auto; 
-      background: var(--color-background); 
-      border-bottom: 1px solid var(--color-subtle-border); 
-      position: sticky; 
-      top: 0; 
-      z-index: 50; 
-  }
-  
+  #color-filter-panel { display: flex !important; align-items: center; gap: 0.8rem; padding: 0.8rem; overflow-x: auto; background: var(--color-background); border-bottom: 1px solid var(--color-subtle-border); position: sticky; top: 0; z-index: 50; }
   #color-filter-panel button { flex-shrink: 0; border: 2px solid var(--color-subtle-border); border-radius: 50%; width: 36px; height: 36px; cursor: pointer; transition: transform 0.2s ease, border-color 0.2s ease; }
   #color-filter-panel button:hover { transform: scale(1.1); }
   #color-filter-panel button:first-child { width: auto; border-radius: 20px; padding: 0 1rem; font-size: 0.9rem; font-weight: bold; color: var(--color-text-secondary); background: transparent; }
@@ -277,19 +234,17 @@ input[type="file"] { display: none; }
 
 /* --- 12. OCULTAR PANEL DE FILTROS EN ESCRITORIO --- */
 #color-filter-panel { display: none; }
-/* EN style.css, al final de la sección 9 (MENÚ DE NOTA, DIMMER Y ANIMACIONES) */
 
-/* Hacemos que .note sea un contexto de apilamiento */
-.note {
-    position: relative; /* ¡CRUCIAL para que z-index funcione! */
-}
+/* --- 13. DRAG & DROP DE COLUMNAS --- */
+.column-title-draggable { cursor: grab; user-select: none; }
+.column-title-draggable:active { cursor: grabbing; }
+.column.sortable-ghost { background: var(--color-background); border: 2px dashed var(--color-primary-accent); }
+.column.sortable-ghost > * { opacity: 0; }
+.column.sortable-drag { opacity: 0.9; transform: rotate(2deg); box-shadow: 0 8px 30px var(--shadow-color); }
 
-/* Nueva clase para la nota con el menú abierto */
-.note.note-menu-open {
-    z-index: 15; /* Un valor alto para traerla al frente */
-}
-/* EN style.css, dentro de @media (max-width: 768px) */
-
-.column.column-hidden-by-filter {
-    display: none;
-}
+/* --- 14. BARRA DE ENTREGAS DESPLEGABLE --- */
+#reminder-bar { transition: max-height 0.3s ease-in-out; overflow: hidden; }
+#reminder-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+#reminder-toggle { background: transparent; border: none; font-size: 1.2rem; transition: transform 0.3s ease; }
+#reminder-bar.collapsed #reminder-toggle { transform: rotate(180deg); }
+#reminder-bar.collapsed { max-height: 2.5em; }
