@@ -2,8 +2,12 @@
    🎨 ESTILOS PRINCIPALES DE LA APP DE NOTAS
    ================================ */
 
-/* --- 1. DEFINICIÓN DE VARIABLES DE COLOR --- */
-:root {
+/* ================================
+   🎨 TEMAS Y VARIABLES DE COLOR
+   ================================ */
+
+/* --- Tema 1: Claro (Por Defecto) --- */
+body, body.theme-light {
   --color-background: #f3e9dc;
   --color-text-primary: #333;
   --color-text-secondary: #666;
@@ -18,7 +22,8 @@
   --color-calendar-section-border: #8b7355;
 }
 
-body.dark-mode {
+/* --- Tema 2: Oscuro --- */
+body.theme-dark {
   --color-background: #1f1f1f;
   --color-text-primary: #e0e0e0;
   --color-text-secondary: #aaaaaa;
@@ -31,6 +36,38 @@ body.dark-mode {
   --shadow-color: rgba(0, 0, 0, 0.4);
   --color-calendar-section-bg: #3a3a3a;
   --color-calendar-section-border: #bcaaa4;
+}
+
+/* --- Tema 3: Otoño Acogedor 🍂 --- */
+body.theme-autumn {
+  --color-background: #f4f1e9;
+  --color-text-primary: #5c4033;
+  --color-text-secondary: #8a5a44;
+  --color-surface: #ffffff;
+  --color-primary-accent: #c06c3a;
+  --color-primary-accent-hover: #a65c32;
+  --color-subtle-border: #dcd3b9;
+  --color-scrollbar-track: #e2d9c2;
+  --color-scrollbar-thumb: #8a5a44;
+  --shadow-color: rgba(92, 64, 51, 0.15);
+  --color-calendar-section-bg: #fdfaf2;
+  --color-calendar-section-border: #c06c3a;
+}
+
+/* --- Tema 4: Océano Profundo 🌊 --- */
+body.theme-ocean {
+  --color-background: #1a2a3a;
+  --color-text-primary: #e5e9f0;
+  --color-text-secondary: #a2b1c3;
+  --color-surface: #2a4a6a;
+  --color-primary-accent: #88c0d0;
+  --color-primary-accent-hover: #97d1e1;
+  --color-subtle-border: #3b5978;
+  --color-scrollbar-track: #233a50;
+  --color-scrollbar-thumb: #4c566a;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --color-calendar-section-bg: #2f5072;
+  --color-calendar-section-border: #88c0d0;
 }
 
 /* --- 2. ESTILOS GENERALES Y DE ESCRITORIO --- */
@@ -61,12 +98,8 @@ body {
   font-family: inherit;
   outline: none;
   min-height: 50px;
+  color: inherit;
 }
-
-body.dark-mode .note { color: #000; }
-body.dark-mode .note .controls { color: #666; }
-body.dark-mode .note .controls button { color: #666; }
-body.dark-mode .note input[type="text"] { color: #000; }
 
 .controls { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
 .controls select { cursor: pointer; border-radius: 4px; padding: 2px 6px; background: var(--color-background); color: var(--color-text-primary); }

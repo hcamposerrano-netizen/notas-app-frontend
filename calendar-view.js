@@ -8,7 +8,16 @@
   toggleBtn.id = "toggle-calendar-btn";
   toggleBtn.textContent = "🗓️ Vista Calendario";
   toggleBtn.style.marginTop = "1rem";
-  panel.appendChild(toggleBtn);
+  // EN calendar-view.js, REEMPLAZA la línea `panel.appendChild(toggleBtn);` con esto:
+
+const actionsContainer = document.querySelector('#actions-section .action-buttons');
+if (actionsContainer) {
+    // Lo insertamos como el segundo elemento, después de "Nueva Nota"
+    actionsContainer.insertBefore(toggleBtn, actionsContainer.children[1]);
+} else {
+    // Si no encuentra el contenedor, lo pone al final como antes (medida de seguridad)
+    panel.appendChild(toggleBtn);
+}
 
   let calendarMode = false;
 

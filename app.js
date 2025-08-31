@@ -150,7 +150,25 @@ const NotesApp = {
     },
 
     createColorFilterPanel() { /* ... esta función se queda igual ... */ },
-    _initColumnDragAndDrop() { /* ... esta función se queda igual ... */ },
+    
+    // ✅ FUNCIÓN CORREGIDA
+    _initColumnDragAndDrop() {
+        const container = document.getElementById("columns-container");
+        if (!container || this.isViewingArchived) return;
+
+        new Sortable(container, {
+            animation: 150,
+            handle: '.column-title-draggable',
+            ghostClass: 'sortable-ghost',
+            dragClass: 'sortable-drag',
+            onEnd: (evt) => {
+                const movedItem = this.columnOrder.splice(evt.oldIndex, 1)[0];
+                this.columnOrder.splice(evt.newIndex, 0, movedItem);
+                localStorage.setItem('columnOrder', JSON.stringify(this.columnOrder));
+            }
+        });
+    },
+
     sortNotes(a, b) { /* ... esta función se queda igual ... */ },
     groupNotesByColor() { /* ... esta función se queda igual ... */ },
     createColumnForColor(c, n) { /* ... esta función se queda igual ... */ },

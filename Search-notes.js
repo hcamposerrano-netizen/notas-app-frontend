@@ -1,13 +1,13 @@
-(function () {
+// ✅ CÓDIGO ENVUELTO PARA EJECUTARSE CUANDO LA APP ESTÉ LISTA
+document.addEventListener('DOMContentLoaded', () => {
   const panel = document.getElementById("control-panel");
   if (!panel) return;
 
   const searchInput = document.createElement("input");
   searchInput.type = "text";
   searchInput.placeholder = "🔍 Buscar por título o contenido...";
-  searchInput.id = "search-input"; // Asignar un ID para CSS si se necesita
+  searchInput.id = "search-input";
   
-  // Insertar el campo de búsqueda antes de la nota rápida para mejor orden
   const quickNoteSection = document.querySelector(".panel-section h3:first-of-type").parentElement;
   if(quickNoteSection) {
     const searchSection = document.createElement("div");
@@ -16,9 +16,8 @@
     searchSection.appendChild(searchInput);
     panel.insertBefore(searchSection, quickNoteSection);
   } else {
-    panel.appendChild(searchInput); // Fallback si no encuentra la sección
+    panel.appendChild(searchInput);
   }
-
 
   searchInput.addEventListener("input", () => {
     const query = searchInput.value.toLowerCase().trim();
@@ -35,13 +34,11 @@
       const noteData = window.NotesApp.notes.get(noteId);
       if (!noteData) return;
 
-      // La nota se muestra si la búsqueda está vacía o si hay una coincidencia
       const isMatch = query === "" ||
         (noteData.nombre || "").toLowerCase().includes(query) ||
         (noteData.contenido || "").toLowerCase().includes(query);
 
-      // Usamos 'flex' porque es el display por defecto de las notas en tu CSS
       noteElement.style.display = isMatch ? "flex" : "none";
     });
   }
-})();
+});

@@ -29,15 +29,19 @@
         <main id="main-container">
             <!-- El panel de filtros por color se insertará aquí mediante JS -->
             <div id="columns-container"></div>
+            
             <aside id="control-panel">
                 <div class="panel-header">
                     <h2>🛠️ Panel de Control</h2>
                     <button id="theme-toggle">🌙</button>
                 </div>
-                <div class="panel-section">
+            
+                <!-- Sección de Acciones -->
+                <div class="panel-section" id="actions-section">
                     <h3>Acciones</h3>
                     <div class="action-buttons">
                         <button id="add-note">➕ Nueva Nota</button>
+                        <!-- El botón de Calendario se insertará aquí -->
                         <button id="view-archived-btn">🗄️ Ver Archivadas</button>
                         <button id="export-json">📤 Exportar JSON</button>
                         <label for="import-json" class="custom-file-upload">📥 Importar JSON</label>
@@ -45,10 +49,16 @@
                         <button onclick="deletePastNotes()">🧹 Borrar Pasadas</button>
                     </div>
                 </div>
+                
+                <!-- Sección de Búsqueda (Se inserta por JS) -->
+                
+                <!-- Sección de Nota Rápida -->
                 <div class="panel-section">
                     <h3>📝 Nota Rápida</h3>
                     <textarea id="quick-note" placeholder="Escribe algo rápido..."></textarea>
                 </div>
+            
+                <!-- Sección de Enlaces Rápidos -->
                 <div class="panel-section">
                     <h3>🔗 Enlaces Rápidos</h3>
                     <div class="link-group">
@@ -58,6 +68,9 @@
                     <ul id="link-list"></ul>
                 </div>
                 
+                <!-- Sección de Filtro por Tipo (Se inserta por JS) -->
+                
+                <!-- Sección del Usuario y Cerrar Sesión -->
                 <div id="user-session-info" class="panel-section">
                     <p id="user-email"></p>
                     <button id="logout-button">Cerrar Sesión</button>
@@ -121,5 +134,3 @@
     <script src="search-notes.js"></script>
     <script src="ui-interactions.js"></script>
     
-</body>
-</html>

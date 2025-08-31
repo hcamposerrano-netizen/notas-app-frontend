@@ -1,40 +1,58 @@
 // ==============================================================
-// 🎨 INTERACCIONES DE LA INTERFAZ DE USUARIO (VERSIÓN UNIFICADA)
+// 🎨 INTERACCIONES DE LA INTERFAZ DE USUARIO (CON TEMAS MÚLTIPLES)
 // ==============================================================
 
 (function() {
-  // --- LÓGICA DEL MENÚ DESLIZABLE ---
-  const toggleBtn = document.querySelector('.panel-toggle');
+  const body = document.body;
   const panel = document.getElementById('control-panel');
+  const toggleBtn = document.querySelector('.panel-toggle');
+  
+  // --- LÓGICA DE TEMAS MÚLTIPLES ---
+  const themeToggleBtn = document.getElementById('theme-toggle');
+  if (themeToggleBtn) {
+    const themes = ['theme-light', 'theme-dark', 'theme-autumn', 'theme-ocean'];
+    
+    const applyTheme = (theme) => {
+      // 1. Limpiar temas antiguos
+      body.classList.remove(...themes);
+      // 2. Añadir el nuevo tema
+      body.classList.add(theme);
+      // 3. Guardar la elección
+      localStorage.setItem('theme', theme);
+      // 4. Actualizar el ícono
+      themeToggleBtn.textContent = '🎨'; 
+    };
 
+    const cycleTheme = () => {
+      let currentTheme = localStorage.getItem('theme') || 'theme-light';
+      let currentIndex = themes.indexOf(currentTheme);
+      let nextIndex = (currentIndex + 1) % themes.length;
+      let nextTheme = themes[nextIndex];
+      applyTheme(nextTheme);
+    };
+
+    // Asignar el evento al botón
+    themeToggleBtn.addEventListener('click', cycleTheme);
+
+    // Cargar el tema guardado al iniciar la app
+    const savedTheme = localStorage.getItem('theme');
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    if (savedTheme) {
+        applyTheme(savedTheme);
+    } else if (systemPrefersDark) {
+        applyTheme('theme-dark');
+    } else {
+        applyTheme('theme-light');
+    }
+  }
+
+  // --- LÓGICA DEL MENÚ DESLIZABLE ---
   if (toggleBtn && panel) {
     toggleBtn.addEventListener('click', (event) => {
       event.stopPropagation();
       panel.classList.toggle('show');
     });
-  }
-
-  // --- LÓGICA DEL MODO OSCURO ---
-  const themeToggleBtn = document.getElementById('theme-toggle');
-  const body = document.body;
-
-  if (themeToggleBtn) {
-    const updateIcon = () => {
-      themeToggleBtn.textContent = body.classList.contains('dark-mode') ? '☀️' : '🌙';
-    };
-
-    themeToggleBtn.addEventListener('click', () => {
-      body.classList.toggle('dark-mode');
-      localStorage.setItem('theme', body.classList.contains('dark-mode') ? 'dark' : 'light');
-      updateIcon();
-    });
-
-    const savedTheme = localStorage.getItem('theme');
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
-        body.classList.add('dark-mode');
-    }
-    updateIcon();
   }
 
   // --- LÓGICA PARA EL PANEL ATENUADO (DIMMER) ---
@@ -46,7 +64,7 @@
   }
 
   const toggleDimmer = () => {
-      if(panel) {
+      if (panel) {
         dimmer.classList.toggle('show', panel.classList.contains('show'));
       }
   };
