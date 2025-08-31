@@ -185,9 +185,25 @@ input[type="file"] { display: none; }
 .modal-footer .save-btn { background-color: #4CAF50; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background-color 0.2s ease; }
 .modal-footer .save-btn:hover { background-color: #45a049; }
 
+/* EN style.css, REEMPLAZA LA SECCIÓN #9 COMPLETA */
+
 /* --- 9. MENÚ DE NOTA, DIMMER Y ANIMACIONES --- */
-.controls { position: relative; }
-.more-options-btn { font-size: 1.5rem; padding: 0 0.5rem; margin-left: auto; }
+.controls { 
+    position: relative; 
+    /* ¡Nuevo! Asegura que los elementos se distribuyan bien */
+    display: flex;
+    justify-content: space-between; 
+}
+
+.more-options-btn {
+    /* ¡Mejoras Clave! Hacemos el botón grande y fácil de tocar */
+    font-size: 1.5rem;
+    padding: 0.2rem 0.8rem; /* Área de pulsación horizontal y vertical */
+    margin-left: auto; /* Lo empuja a la derecha */
+    line-height: 1;
+    border-radius: 8px;
+}
+
 .note-menu { position: absolute; right: 0; top: 100%; background: var(--color-surface); border: 1px solid var(--color-subtle-border); border-radius: 8px; box-shadow: 0 4px 15px var(--shadow-color); z-index: 20; width: 200px; padding: 0.5rem; opacity: 0; transform: translateY(-10px); pointer-events: none; transition: opacity 0.2s ease, transform 0.2s ease; }
 .note-menu.show { opacity: 1; transform: translateY(0); pointer-events: all; }
 .note-menu button { display: flex; align-items: center; gap: 0.8rem; width: 100%; text-align: left; background: transparent; color: var(--color-text-primary); padding: 0.8rem; font-size: 0.9rem; }

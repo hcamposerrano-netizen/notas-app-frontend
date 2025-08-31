@@ -1,10 +1,10 @@
 // ==============================================================
-// 📱 APLICACIÓN DE NOTAS - VERSIÓN 8.0 (EXPERIENCIA MÓVIL PREMIUM)
+// 📱 APLICACIÓN DE NOTAS - VERSIÓN 8.1 (UI Y ANIMACIONES CORREGIDAS)
 // ==============================================================
 
 // --- CONFIGURACIÓN DE SUPABASE ---
 const SUPABASE_URL = 'https://vtxcjzglafbhdcrehamc.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzILNdiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0eGNqemdsYWZiaGRjcmVoYW1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4NDQzMTIsImV4cCI6MjA3MTQyMDMxMn0.Mc2ot-pr4XVt0pFfbydDu2aCUhduuhT3Tc54tYQfu60';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0eGNqemdsYWZiaGRjcmVoYW1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4NDQzMTIsImV4cCI6MjA3MTQyMDMxMn0.Mc2ot-pr4XVt0pFfbydDu2aCUhduuhT3Tc54tYQfu60';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // --- CONFIGURACIÓN DE LA API ---
@@ -61,13 +61,9 @@ const NotesApp = {
     columnNames: {},
     COLORS: [ { name: "Amarillo", value: "#f1e363ff" }, { name: "Azul", value: "#81d4fa" }, { name: "Verde", value: "#78a347ff" }, { name: "Rosa", value: "#b16982ff" }, { name: "Lila", value: "#8b5794ff" }, { name: "Naranja", value: "#ce730cff" }, { name: "Turquesa", value: "#558f97ff" }, { name: "Gris", value: "#afa4a4ff" } ],
 
-    // --- MÉTODOS DE API PROTEGIDOS ---
     async fetchWithAuth(url, options = {}) {
         const token = AuthManager.getToken();
-        if (!token) {
-            console.error("No hay token de autenticación.");
-            return null;
-        }
+        if (!token) { console.error("No hay token de autenticación."); return null; }
         const headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
         return fetch(url, { ...options, headers });
     },
@@ -87,9 +83,7 @@ const NotesApp = {
         const { fecha, hora, ...noteToSend } = note;
         try {
             await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${note.id}`, { 
-                method: 'PUT', 
-                headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify(noteToSend) 
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(noteToSend) 
             });
             await this.refreshAllData();
         } catch (error) { console.error(`❌ Error al actualizar nota ${note.id}:`, error); }
@@ -97,8 +91,7 @@ const NotesApp = {
     
     async handleFileUpload(noteId, file) {
         if (!file || file.size > 5 * 1024 * 1024) { 
-            alert(file ? "❌ El archivo es demasiado grande (máx 5MB)." : "No se seleccionó archivo.");
-            return;
+            alert(file ? "❌ El archivo es demasiado grande (máx 5MB)." : "No se seleccionó archivo."); return;
         }
         const formData = new FormData();
         formData.append('file', file);
@@ -110,7 +103,6 @@ const NotesApp = {
         } catch (error) { console.error('❌ Error al subir el archivo:', error); alert('❌ Hubo un problema al subir el archivo.'); }
     },
 
-    // --- LÓGICA DEL MODAL DE CREACIÓN ---
     createNote() {
         const overlay = document.getElementById('new-note-overlay');
         document.getElementById('new-note-form').reset();
@@ -130,6 +122,7 @@ const NotesApp = {
         });
     },
 
+    // ✅ LÓGICA DE CREACIÓN DE NOTA CORREGIDA PARA ANIMACIÓN
     async _handleCreateNoteSubmit(event) {
         event.preventDefault();
         const noteData = {
@@ -142,25 +135,21 @@ const NotesApp = {
         };
         try {
             const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(noteData)
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(noteData)
             });
             if (!response || !response.ok) throw new Error('Error del servidor al crear la nota.');
             
-            const newNote = await response.json(); // Obtenemos la nota creada para la animación
+            const newNote = await response.json();
+            this.notes.set(newNote.id, newNote); // Añadimos la nueva nota al estado local
+            this.renderNotes(); // Re-renderizamos la UI con la nueva nota
+            
+            // Ahora que la nota está en el DOM, la encontramos y aplicamos la animación
+            const newNoteElement = document.querySelector(`.note[data-note-id='${newNote.id}']`);
+            if (newNoteElement) {
+                newNoteElement.classList.add('note-entering');
+            }
             
             this._closeNewNoteModal();
-            await this.refreshAllData();
-
-            // Después de renderizar todo, encontramos la nueva nota y la animamos
-            setTimeout(() => {
-                const newNoteElement = document.querySelector(`.note[data-note-id='${newNote.id}']`);
-                if (newNoteElement) {
-                    newNoteElement.classList.add('note-entering');
-                }
-            }, 50);
-
         } catch (error) { console.error('❌ Error al crear nota desde el modal:', error); alert('Hubo un problema al guardar la nota.'); }
     },
     
@@ -168,16 +157,10 @@ const NotesApp = {
         document.getElementById('new-note-overlay').classList.add('overlay-hidden');
     },
     
-    // --- FUNCIONES DE LÓGICA Y RENDERIZADO ---
     async handleDateTimeChange(note, dateInput, timeInput) {
         let new_fecha_hora = null;
-        if (dateInput.value) {
-            new_fecha_hora = `${dateInput.value}T${timeInput.value || '00:00'}:00.000Z`;
-        }
-        if (note.fecha_hora !== new_fecha_hora) {
-            note.fecha_hora = new_fecha_hora;
-            await this.apiUpdate(note);
-        }
+        if (dateInput.value) { new_fecha_hora = `${dateInput.value}T${timeInput.value || '00:00'}:00.000Z`; }
+        if (note.fecha_hora !== new_fecha_hora) { note.fecha_hora = new_fecha_hora; await this.apiUpdate(note); }
     },
       
     async deletePastNotes() {
@@ -201,61 +184,35 @@ const NotesApp = {
     createDateInput(n, t) { const i = document.createElement("input"); i.type = "date"; i.value = n.fecha || ''; i.onchange = () => this.handleDateTimeChange(n, i, t); return i; },
     createTimeInput(n, d) { const i = document.createElement("input"); i.type = "time"; i.value = n.hora || ''; i.style.width = "75px"; i.onchange = () => this.handleDateTimeChange(n, d, i); return i; },
     
-    // ⭐ NUEVA FUNCIÓN DE CONTROLES CON MENÚ DESPLEGABLE ⭐
     createControls(n) {
         const controlsContainer = document.createElement("div");
         controlsContainer.className = "controls";
-    
         let dateInput, timeInput;
         timeInput = this.createTimeInput(n, dateInput);
         dateInput = this.createDateInput(n, timeInput);
         controlsContainer.append(dateInput, timeInput);
-    
         const moreOptionsBtn = document.createElement("button");
         moreOptionsBtn.className = "more-options-btn";
         moreOptionsBtn.textContent = "⋮";
         moreOptionsBtn.title = "Más opciones";
-        
         const menu = document.createElement("div");
         menu.className = "note-menu";
-    
         const editBtn = document.createElement("button");
         editBtn.innerHTML = "📝<span>Editar Avanzado</span>";
         editBtn.onclick = () => this.Editor.open(n.id);
-    
         const uploadBtn = document.createElement("button");
         uploadBtn.innerHTML = "📎<span>Adjuntar Archivo</span>";
-        uploadBtn.onclick = () => {
-            const fileInput = document.createElement('input');
-            fileInput.type = 'file';
-            fileInput.accept = ".pdf,.jpg,.jpeg,.png,.txt";
-            fileInput.onchange = (e) => this.handleFileUpload(n.id, e.target.files[0]);
-            fileInput.click();
-        };
-    
+        uploadBtn.onclick = () => { const fI = document.createElement('input'); fI.type = 'file'; fI.accept = ".pdf,.jpg,.jpeg,.png,.txt"; fI.onchange = (e) => this.handleFileUpload(n.id, e.target.files[0]); fI.click(); };
         const pinBtn = this.createPinButton(n);
-        pinBtn.innerHTML = n.fijada ? "📌<span>Desfijar Nota</span>" : "📍<span>Fijar Nota</span>";
-    
         const deleteBtn = this.createDeleteButton(n);
-        deleteBtn.innerHTML = "🗑️<span>Borrar Nota</span>";
-    
         const colorSelectLabel = document.createElement("label");
         colorSelectLabel.textContent = "🎨 Color:";
         const colorSelect = this.createColorSelect(n);
         const colorSelectContainer = document.createElement("div");
         colorSelectContainer.className = "menu-color-select";
         colorSelectContainer.append(colorSelectLabel, colorSelect);
-    
         menu.append(editBtn, uploadBtn, pinBtn, deleteBtn, colorSelectContainer);
-        
-        moreOptionsBtn.onclick = (e) => {
-            e.stopPropagation();
-            document.querySelectorAll('.note-menu.show').forEach(m => {
-                if (m !== menu) m.classList.remove('show');
-            });
-            menu.classList.toggle('show');
-        };
-    
+        moreOptionsBtn.onclick = (e) => { e.stopPropagation(); document.querySelectorAll('.note-menu.show').forEach(m => { if (m !== menu) m.classList.remove('show'); }); menu.classList.toggle('show'); };
         controlsContainer.append(moreOptionsBtn, menu);
         return controlsContainer;
     },
@@ -266,11 +223,27 @@ const NotesApp = {
     createContentArea(n) { const t = document.createElement("textarea"); t.value = n.contenido; t.oninput = () => { n.contenido = t.value; this.debouncedSave(n.id); }; return t; },
     createTypeSelect(n, l) { const s = document.createElement("select"); ["Clase", "Entrega"].forEach(t => { const o = document.createElement("option"); o.value = t; o.textContent = t; if (t === n.tipo) o.selected = true; s.appendChild(o); }); s.addEventListener("change", () => { n.tipo = s.value; l.textContent = s.value; this.styleNoteElement(s.closest('.note'), n); this.apiUpdate(n); }); return s; },
     createColorSelect(n) { const s = document.createElement("select"); this.COLORS.forEach(c => { const o = document.createElement("option"); o.value = c.value; o.textContent = c.name; if (c.value === n.color) o.selected = true; s.appendChild(o); }); s.onchange = () => { n.color = s.value; this.apiUpdate(n); }; return s; },
-    createPinButton(n) { const b = document.createElement("button"); b.onclick = (e) => { e.stopPropagation(); n.fijada = !n.fijada; this.apiUpdate(n); }; return b; },
     
-    // ⭐ NUEVA FUNCIÓN DE BORRADO CON ANIMACIÓN ⭐
+    // ✅ LÓGICA DE FIJAR NOTA CORREGIDA PARA ACTUALIZAR TEXTO
+    createPinButton(n) {
+        const b = document.createElement("button");
+        const updatePinButtonState = () => {
+            b.innerHTML = n.fijada ? "📌<span>Desfijar Nota</span>" : "📍<span>Fijar Nota</span>";
+        };
+        b.onclick = (e) => {
+            e.stopPropagation();
+            n.fijada = !n.fijada;
+            updatePinButtonState(); // Actualiza el texto inmediatamente
+            this.apiUpdate(n);
+        };
+        updatePinButtonState(); // Estado inicial
+        return b;
+    },
+    
+    // ✅ LÓGICA DE BORRADO CORREGIDA PARA ANIMACIÓN
     createDeleteButton(n) {
         const b = document.createElement("button");
+        b.innerHTML = "🗑️<span>Borrar Nota</span>";
         b.onclick = async (e) => {
             e.stopPropagation();
             if (confirm("¿Seguro que quieres borrar esta nota?")) {
@@ -278,7 +251,9 @@ const NotesApp = {
                 noteElement.classList.add('note-leaving');
                 setTimeout(async () => {
                     await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${n.id}`, { method: 'DELETE' });
-                    await this.refreshAllData();
+                    // No refrescamos todo, solo quitamos la nota del estado local
+                    this.notes.delete(n.id);
+                    this.renderNotes();
                 }, 300);
             }
         };
@@ -293,7 +268,6 @@ const NotesApp = {
     debouncedSave(noteId) { if (this.debounceTimeout) clearTimeout(this.debounceTimeout); this.debounceTimeout = setTimeout(() => { const note = this.notes.get(noteId); if (note) this.apiUpdate(note); }, 1000); },
     async saveQuickNoteToServer(c) { try { await this.fetchWithAuth(`${API_BASE_URL}/api/settings/quicknote`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: c }) }); } catch (e) { console.error('❌ Error al guardar nota rápida:', e); } },
 
-    // --- PUNTO DE ENTRADA Y CONFIGURACIÓN ---
     async init() {
         if (this.isInitialized) return;
         this.isInitialized = true;
@@ -318,14 +292,12 @@ const NotesApp = {
         const q = document.getElementById("quick-note");
         q.addEventListener('input', () => { if (this.quickNoteDebounce) clearTimeout(this.quickNoteDebounce); this.quickNoteDebounce = setTimeout(() => this.saveQuickNoteToServer(q.value), 1000); });
         window.deletePastNotes = () => this.deletePastNotes();
-
         const newNoteForm = document.getElementById('new-note-form');
         const closeModalBtn = document.getElementById('close-modal-btn');
         const newNoteOverlay = document.getElementById('new-note-overlay');
         newNoteForm.addEventListener('submit', (event) => this._handleCreateNoteSubmit(event));
         closeModalBtn.addEventListener('click', () => this._closeNewNoteModal());
         newNoteOverlay.addEventListener('click', (event) => { if (event.target === newNoteOverlay) this._closeNewNoteModal(); });
-        
         this._populateColorSelector();
     },
 };
