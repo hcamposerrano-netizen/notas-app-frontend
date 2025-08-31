@@ -1,5 +1,5 @@
 // ==============================================================
-// 📱 APLICACIÓN DE NOTAS - VERSIÓN 8.1 (UI Y ANIMACIONES CORREGIDAS)
+// 📱 APLICACIÓN DE NOTAS - VERSIÓN 8.2 (CÓDIGO UNIFICADO Y CORREGIDO)
 // ==============================================================
 
 // --- CONFIGURACIÓN DE SUPABASE ---
@@ -59,7 +59,7 @@ const NotesApp = {
     quickNote: "",
     links: [],
     columnNames: {},
-    activeColorFilter: 'all', // 'all' para mostrar todas, o un color hex.
+    activeColorFilter: 'all',
     COLORS: [ { name: "Amarillo", value: "#f1e363ff" }, { name: "Azul", value: "#81d4fa" }, { name: "Verde", value: "#78a347ff" }, { name: "Rosa", value: "#b16982ff" }, { name: "Lila", value: "#8b5794ff" }, { name: "Naranja", value: "#ce730cff" }, { name: "Turquesa", value: "#558f97ff" }, { name: "Gris", value: "#afa4a4ff" } ],
 
     async fetchWithAuth(url, options = {}) {
@@ -172,89 +172,51 @@ const NotesApp = {
             alert(`🧹 ${notesToDeleteIds.length} entregas antiguas fueron eliminadas.`);
         } catch (error) { console.error('❌ Error durante el borrado en lote:', error); }
     },
-      
-    // EN app.js, REEMPLAZA la función renderNotes existente con esta:
 
-// EN app.js, REEMPLAZA la función renderNotes
-
-renderNotes() {
-    this.createColorFilterPanel(); // Crea el panel (solo si es móvil)
-
-    const container = document.getElementById("columns-container");
-    container.innerHTML = "";
-    const grouped = this.groupNotesByColor();
-
-    for (let [color, group] of Object.entries(grouped)) {
-        const column = this.createColumnForColor(color, group);
-        
-        // La visibilidad de la columna ahora se controla 100% con CSS en el modo móvil,
-        // y en escritorio siempre son visibles.
-        if (this.activeColorFilter !== 'all' && this.activeColorFilter !== color) {
-            column.classList.add('column-hidden-by-filter');
+    renderNotes() {
+        this.createColorFilterPanel();
+        const container = document.getElementById("columns-container");
+        container.innerHTML = "";
+        const grouped = this.groupNotesByColor();
+        for (let [color, group] of Object.entries(grouped)) {
+            const column = this.createColumnForColor(color, group);
+            if (this.activeColorFilter !== 'all' && this.activeColorFilter !== color) {
+                column.classList.add('column-hidden-by-filter');
+            }
+            container.appendChild(column);
         }
-        
-        container.appendChild(column);
-    }
+        this.updateReminders();
+    },
 
-    this.updateReminders();
-},
-    // EN app.js, REEMPLAZA la función createColorFilterPanel
-
-createColorFilterPanel() {
-    let panel = document.getElementById('color-filter-panel');
-    
-    // ⭐ ¡LÓGICA CLAVE! Si no estamos en modo móvil, nos aseguramos de que el panel no exista y salimos. ⭐
-    if (!window.matchMedia('(max-width: 768px)').matches) {
-        if (panel) {
-            panel.innerHTML = '';
+    createColorFilterPanel() {
+        let panel = document.getElementById('color-filter-panel');
+        if (!panel) {
+            panel = document.createElement('div');
+            panel.id = 'color-filter-panel';
+            document.getElementById('main-container').prepend(panel);
+        }
+        panel.innerHTML = '';
+        const usedColors = [...new Set(Array.from(this.notes.values()).map(n => n.color))];
+        if (usedColors.length <= 1) {
             panel.style.display = 'none';
+            this.activeColorFilter = 'all';
+            return;
         }
-        return;
-    }
-
-    // Si estamos en móvil, creamos el panel si no existe
-    if (!panel) {
-        panel = document.createElement('div');
-        panel.id = 'color-filter-panel';
-        const mainContainer = document.getElementById('main-container');
-        mainContainer.prepend(panel);
-    }
-
-    panel.innerHTML = '';
-    const usedColors = [...new Set(Array.from(this.notes.values()).map(n => n.color))];
-    
-    // Si solo hay un color (o ninguno), no tiene sentido mostrar el panel de filtros
-    if (usedColors.length <= 1) {
-        panel.style.display = 'none';
-        this.activeColorFilter = 'all'; // Reseteamos por si acaso
-        return;
-    }
-    
-    panel.style.display = 'flex'; // Nos aseguramos de que sea visible
-
-    // Botón "Ver Todas"
-    const allButton = document.createElement('button');
-    allButton.textContent = 'Todas';
-    allButton.className = this.activeColorFilter === 'all' ? 'active' : '';
-    allButton.onclick = () => {
-        this.activeColorFilter = 'all';
-        this.renderNotes(); // Volvemos a renderizar para aplicar el filtro
-    };
-    panel.appendChild(allButton);
-
-    // Botones de colores
-    usedColors.forEach(color => {
-        const colorButton = document.createElement('button');
-        colorButton.style.backgroundColor = color;
-        colorButton.className = this.activeColorFilter === color ? 'active' : '';
-        colorButton.title = this.COLORS.find(c => c.value === color)?.name || color;
-        colorButton.onclick = () => {
-            this.activeColorFilter = color;
-            this.renderNotes(); // Volvemos a renderizar para aplicar el filtro
-        };
-        panel.appendChild(colorButton);
-    });
-},
+        panel.style.display = ''; 
+        const allButton = document.createElement('button');
+        allButton.textContent = 'Todas';
+        allButton.className = this.activeColorFilter === 'all' ? 'active' : '';
+        allButton.onclick = () => { this.activeColorFilter = 'all'; this.renderNotes(); };
+        panel.appendChild(allButton);
+        usedColors.forEach(color => {
+            const colorButton = document.createElement('button');
+            colorButton.style.backgroundColor = color;
+            colorButton.className = this.activeColorFilter === color ? 'active' : '';
+            colorButton.title = this.COLORS.find(c => c.value === color)?.name || color;
+            colorButton.onclick = () => { this.activeColorFilter = color; this.renderNotes(); };
+            panel.appendChild(colorButton);
+        });
+    },
 
     sortNotes(a, b) { if (b.fijada !== a.fijada) return b.fijada - a.fijada; const dA = a.fecha_hora ? new Date(a.fecha_hora) : null; const dB = b.fecha_hora ? new Date(b.fecha_hora) : null; if (!dA && dB) return 1; if (dA && !dB) return -1; return dA - dB; },
     groupNotesByColor() { const g = {}; for (let n of this.notes.values()) { (g[n.color] = g[n.color] || []).push(n); } for (let group of Object.values(g)) { group.sort(this.sortNotes); } return g; },
@@ -293,26 +255,18 @@ createColorFilterPanel() {
         colorSelectContainer.className = "menu-color-select";
         colorSelectContainer.append(colorSelectLabel, colorSelect);
         menu.append(editBtn, uploadBtn, pinBtn, deleteBtn, colorSelectContainer);
-        // EN app.js, dentro de la función createControls, localiza este bloque:
-// moreOptionsBtn.onclick = (e) => { ... };
-// Y REEMPLÁZALO por este:
-
-moreOptionsBtn.onclick = (e) => {
-    e.stopPropagation();
-    const parentNote = moreOptionsBtn.closest('.note');
-
-    // Primero, cierra cualquier otro menú que esté abierto
-    document.querySelectorAll('.note-menu.show').forEach(m => {
-        if (m !== menu) {
-            m.classList.remove('show');
-            m.closest('.note').classList.remove('note-menu-open');
-        }
-    });
-    
-    // Ahora, alterna el estado del menú y de la nota actual
-    menu.classList.toggle('show');
-    parentNote.classList.toggle('note-menu-open');
-};
+        moreOptionsBtn.onclick = (e) => {
+            e.stopPropagation();
+            const parentNote = moreOptionsBtn.closest('.note');
+            document.querySelectorAll('.note-menu.show').forEach(m => {
+                if (m !== menu) {
+                    m.classList.remove('show');
+                    m.closest('.note').classList.remove('note-menu-open');
+                }
+            });
+            menu.classList.toggle('show');
+            parentNote.classList.toggle('note-menu-open');
+        };
         controlsContainer.append(moreOptionsBtn, menu);
         return controlsContainer;
     },
