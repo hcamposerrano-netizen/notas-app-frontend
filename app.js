@@ -1,11 +1,10 @@
 // ==============================================================
-// 📱 APLICACIÓN DE NOTAS - VERSIÓN 6.0 (CON AUTENTICACIÓN)
+// 📱 APLICACIÓN DE NOTAS - VERSIÓN 7.1 (MODAL Y UI MEJORADA)
 // ==============================================================
 
 // --- CONFIGURACIÓN DE SUPABASE ---
 const SUPABASE_URL = 'https://vtxcjzglafbhdcrehamc.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0eGNqemdsYWZiaGRjcmVoYW1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4NDQzMTIsImV4cCI6MjA3MTQyMDMxMn0.Mc2ot-pr4XVt0pFfbydDu2aCUhduuhT3Tc54tYQfu60';
-
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // --- CONFIGURACIÓN DE LA API ---
@@ -16,68 +15,36 @@ const API_BASE_URL = "https://notas-app-backend-q1ne.onrender.com";
 // ==============================================================
 const AuthManager = {
     session: null,
-
     init() {
-        // Escucha cambios en el estado de autenticación (login, logout)
         supabaseClient.auth.onAuthStateChange((event, session) => {
             this.session = session;
             this.renderUI();
         });
     },
-
-    // Dibuja la UI correcta dependiendo de si hay sesión o no
     renderUI() {
         const authContainer = document.getElementById('auth-container');
         const appContainer = document.getElementById('app-container');
-
         if (this.session) {
-            // Usuario autenticado
             authContainer.style.display = 'none';
-            appContainer.style.display = 'flex'; // Usamos flex para que ocupe toda la altura
-
+            appContainer.style.display = 'flex';
             const userEmailEl = document.getElementById('user-email');
-            if (userEmailEl) {
-                userEmailEl.textContent = this.session.user.email;
-            }
-
-            // Inicia la aplicación principal solo si no ha sido iniciada
-            if (!NotesApp.isInitialized) {
-                NotesApp.init();
-            }
+            if (userEmailEl) userEmailEl.textContent = this.session.user.email;
+            if (!NotesApp.isInitialized) NotesApp.init();
         } else {
-            // Usuario no autenticado
             authContainer.style.display = 'block';
             appContainer.style.display = 'none';
         }
     },
-
-    // Funciones de login/logout
     async signInWithGoogle() {
-        const { error } = await supabaseClient.auth.signInWithOAuth({
-            provider: 'google',
-        });
+        const { error } = await supabaseClient.auth.signInWithOAuth({ provider: 'google' });
         if (error) console.error("Error al iniciar sesión:", error);
     },
-
-   async signOut() {
-    // Primera confirmación
-    const firstConfirm = confirm("¿Estás seguro de que quieres cerrar sesión?");
-
-    if (firstConfirm) {
-        // Segunda confirmación
-        const secondConfirm = confirm("Esta acción terminará tu sesión actual. ¿Continuar?");
-        
-        if (secondConfirm) {
-            // Solo si ambas confirmaciones son positivas, cerramos la sesión
+    async signOut() {
+        if (confirm("¿Estás seguro de que quieres cerrar sesión?") && confirm("Esta acción terminará tu sesión actual. ¿Continuar?")) {
             const { error } = await supabaseClient.auth.signOut();
-            if (error) {
-                console.error("Error al cerrar sesión:", error);
-                alert("Hubo un error al intentar cerrar la sesión.");
-            }
+            if (error) console.error("Error al cerrar sesión:", error);
         }
-    }
-},
-
+    },
     getToken() {
         return this.session?.access_token || null;
     }
@@ -88,22 +55,20 @@ const AuthManager = {
 // ==============================================================
 const NotesApp = {
     isInitialized: false,
-    notes: new Map(), quickNote: "", links: [], columnNames: {},
+    notes: new Map(),
+    quickNote: "",
+    links: [],
+    columnNames: {},
     COLORS: [ { name: "Amarillo", value: "#f1e363ff" }, { name: "Azul", value: "#81d4fa" }, { name: "Verde", value: "#78a347ff" }, { name: "Rosa", value: "#b16982ff" }, { name: "Lila", value: "#8b5794ff" }, { name: "Naranja", value: "#ce730cff" }, { name: "Turquesa", value: "#558f97ff" }, { name: "Gris", value: "#afa4a4ff" } ],
 
     // --- MÉTODOS DE API PROTEGIDOS ---
     async fetchWithAuth(url, options = {}) {
         const token = AuthManager.getToken();
         if (!token) {
-            console.error("No hay token de autenticación. El usuario debe iniciar sesión.");
+            console.error("No hay token de autenticación.");
             return null;
         }
-
-        const headers = {
-            ...options.headers,
-            'Authorization': `Bearer ${token}`
-        };
-
+        const headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
         return fetch(url, { ...options, headers });
     },
 
@@ -131,53 +96,71 @@ const NotesApp = {
     },
     
     async handleFileUpload(noteId, file) {
-        if (!file) return;
-        if (file.size > 5 * 1024 * 1024) { 
-            alert("❌ El archivo es demasiado grande. El límite es de 5MB.");
+        if (!file || file.size > 5 * 1024 * 1024) { 
+            alert(file ? "❌ El archivo es demasiado grande (máx 5MB)." : "No se seleccionó archivo.");
             return;
         }
-
         const formData = new FormData();
         formData.append('file', file);
-
         try {
-            const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${noteId}/upload`, {
-                method: 'POST',
-                body: formData,
-            });
-
-            if (!response || !response.ok) {
-                throw new Error('Error en la respuesta del servidor.');
-            }
-
+            const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${noteId}/upload`, { method: 'POST', body: formData });
+            if (!response || !response.ok) throw new Error('Error en la respuesta del servidor.');
             alert('✅ Archivo subido con éxito!');
             await this.refreshAllData();
-
-        } catch (error) {
-            console.error('❌ Error al subir el archivo:', error);
-            alert('❌ Hubo un problema al subir el archivo.');
-        }
+        } catch (error) { console.error('❌ Error al subir el archivo:', error); alert('❌ Hubo un problema al subir el archivo.'); }
     },
 
-    async createNote() {
-        const noteData = { nombre: "Nueva Nota", fecha_hora: null };
+    // --- LÓGICA DEL MODAL DE CREACIÓN ---
+    createNote() {
+        const overlay = document.getElementById('new-note-overlay');
+        document.getElementById('new-note-form').reset();
+        overlay.classList.remove('overlay-hidden');
+        document.getElementById('new-note-nombre').focus();
+    },
+
+    _populateColorSelector() {
+        const select = document.getElementById('new-note-color');
+        select.innerHTML = '';
+        this.COLORS.forEach(color => {
+            const option = document.createElement('option');
+            option.value = color.value;
+            option.textContent = color.name;
+            if (color.value === "#f1e363ff") option.selected = true;
+            select.appendChild(option);
+        });
+    },
+
+    async _handleCreateNoteSubmit(event) {
+        event.preventDefault();
+        const noteData = {
+            nombre: document.getElementById('new-note-nombre').value || "Nueva Nota",
+            contenido: document.getElementById('new-note-contenido').value,
+            tipo: document.getElementById('new-note-tipo').value,
+            color: document.getElementById('new-note-color').value,
+            fecha_hora: null,
+            fijada: false
+        };
         try {
-            await this.fetchWithAuth(`${API_BASE_URL}/api/notes`, { 
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify(noteData) 
+            const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(noteData)
             });
+            if (!response || !response.ok) throw new Error('Error del servidor al crear la nota.');
+            this._closeNewNoteModal();
             await this.refreshAllData();
-        } catch (error) { console.error('❌ Error al crear nota:', error); }
+        } catch (error) { console.error('❌ Error al crear nota desde el modal:', error); alert('Hubo un problema al guardar la nota.'); }
     },
     
-    // --- FUNCIONES DE LÓGICA Y RENDERIZADO (RESTAURADAS) ---
+    _closeNewNoteModal() {
+        document.getElementById('new-note-overlay').classList.add('overlay-hidden');
+    },
+    
+    // --- FUNCIONES DE LÓGICA Y RENDERIZADO ---
     async handleDateTimeChange(note, dateInput, timeInput) {
-        const dateValue = dateInput.value; const timeValue = timeInput.value;
         let new_fecha_hora = null;
-        if (dateValue) {
-            const effectiveTime = timeValue || '00:00';
-            new_fecha_hora = `${dateValue}T${effectiveTime}:00.000Z`;
+        if (dateInput.value) {
+            new_fecha_hora = `${dateInput.value}T${timeInput.value || '00:00'}:00.000Z`;
         }
         if (note.fecha_hora !== new_fecha_hora) {
             note.fecha_hora = new_fecha_hora;
@@ -186,29 +169,27 @@ const NotesApp = {
     },
       
     async deletePastNotes() {
-        const today = new Date().toISOString();
-        const notesToDeleteIds = Array.from(this.notes.values()).filter(n => n.fecha_hora && n.fecha_hora < today && n.tipo === 'Entrega').map(n => n.id);
-        if (notesToDeleteIds.length === 0) { alert("👍 No hay entregas antiguas para eliminar."); return; }
+        const notesToDeleteIds = Array.from(this.notes.values()).filter(n => n.fecha_hora && n.fecha_hora < new Date().toISOString() && n.tipo === 'Entrega').map(n => n.id);
+        if (notesToDeleteIds.length === 0) return alert("👍 No hay entregas antiguas para eliminar.");
         if (!confirm(`🧹 ¿Seguro que quieres borrar ${notesToDeleteIds.length} entrega(s) pasada(s)?`)) return;
         try {
-            const deletePromises = notesToDeleteIds.map(id => this.fetchWithAuth(`${API_BASE_URL}/api/notes/${id}`, { method: 'DELETE' }));
-            await Promise.all(deletePromises);
+            await Promise.all(notesToDeleteIds.map(id => this.fetchWithAuth(`${API_BASE_URL}/api/notes/${id}`, { method: 'DELETE' })));
             await this.refreshAllData();
             alert(`🧹 ${notesToDeleteIds.length} entregas antiguas fueron eliminadas.`);
-        } catch (error) { console.error('❌ Error durante el borrado en lote:', error); await this.refreshAllData(); }
+        } catch (error) { console.error('❌ Error durante el borrado en lote:', error); }
     },
       
-    renderNotes() { const container = document.getElementById("columns-container"); container.innerHTML = ""; const grouped = this.groupNotesByColor(); for (let [color, group] of Object.entries(grouped)) { this.createColumnForColor(color, group, container); } this.updateReminders(); },
-    sortNotes(a, b) { if (b.fijada && !a.fijada) return 1; if (a.fijada && !b.fijada) return -1; const dateA = a.fecha_hora ? new Date(a.fecha_hora) : null; const dateB = b.fecha_hora ? new Date(b.fecha_hora) : null; if (!dateA && dateB) return 1; if (dateA && !dateB) return -1; if (!dateA && !dateB) return 0; return dateA - dateB; },
-    groupNotesByColor() { const grouped = {}; for (let note of this.notes.values()) { if (!grouped[note.color]) grouped[note.color] = []; grouped[note.color].push(note); } for (let group of Object.values(grouped)) { group.sort(this.sortNotes); } return grouped; },
-    createColumnForColor(c, n, cont) { const col = document.createElement("div"); col.className = "column"; const d = this.COLORS.find(cl => cl.value === c)?.name || "Sin nombre"; const t = this.createColumnTitle(c, d); col.appendChild(t); n.forEach(note => { const el = this.createNoteElement(note); col.appendChild(el); }); cont.appendChild(col); },
+    renderNotes() { const c = document.getElementById("columns-container"); c.innerHTML = ""; const g = this.groupNotesByColor(); for (let [color, group] of Object.entries(g)) { this.createColumnForColor(color, group, c); } this.updateReminders(); },
+    sortNotes(a, b) { if (b.fijada !== a.fijada) return b.fijada - a.fijada; const dA = a.fecha_hora ? new Date(a.fecha_hora) : null; const dB = b.fecha_hora ? new Date(b.fecha_hora) : null; if (!dA && dB) return 1; if (dA && !dB) return -1; return dA - dB; },
+    groupNotesByColor() { const g = {}; for (let n of this.notes.values()) { (g[n.color] = g[n.color] || []).push(n); } for (let group of Object.values(g)) { group.sort(this.sortNotes); } return g; },
+    createColumnForColor(c, n, cont) { const col = document.createElement("div"); col.className = "column"; const d = this.COLORS.find(cl => cl.value === c)?.name || "Sin nombre"; const t = this.createColumnTitle(c, d); col.appendChild(t); n.forEach(note => col.appendChild(this.createNoteElement(note))); cont.appendChild(col); },
     createColumnTitle(c, d) { const i = document.createElement("input"); i.type = "text"; i.placeholder = d; i.value = this.columnNames[c] || d; Object.assign(i.style, { fontWeight: "bold", fontSize: "1.1em", marginBottom: "0.5em", border: "none", borderBottom: "2px solid #ccc", background: "transparent", textAlign: "center", width: "100%" }); i.oninput = () => { this.columnNames[c] = i.value; localStorage.setItem('columnNames', JSON.stringify(this.columnNames)); }; return i; },
-    createNoteElement(n) { const d = document.createElement("div"); d.className = "note"; d.dataset.noteId = n.id; this.styleNoteElement(d, n); const l = this.createTypeLabel(n); const i = this.createNameInput(n); const s = this.createTypeSelect(n, l); const t = this.createContentArea(n); const attachmentLink = this.createAttachmentLink(n); const ctrl = this.createControls(n); const cc = this.getContrastColor(n.color); i.style.color = cc; t.style.color = cc; d.append(l, i, s, t, attachmentLink, ctrl); return d; },
-    styleNoteElement(d, n) { d.style.backgroundColor = n.color; d.style.color = this.getContrastColor(n.color); d.style.paddingLeft = "0.5rem"; if (n.tipo === "Clase") { d.style.borderLeft = "5px solid #1976d2"; } else if (n.tipo === "Entrega") { d.style.borderLeft = "5px solid #d32f2f"; } },
+    createNoteElement(n) { const d = document.createElement("div"); d.className = "note"; d.dataset.noteId = n.id; this.styleNoteElement(d, n); const l = this.createTypeLabel(n); const i = this.createNameInput(n); const s = this.createTypeSelect(n, l); const t = this.createContentArea(n); const aL = this.createAttachmentLink(n); const ctrl = this.createControls(n); const cC = this.getContrastColor(n.color); i.style.color = cC; t.style.color = cC; d.append(l, i, s, t, aL, ctrl); return d; },
+    styleNoteElement(d, n) { d.style.backgroundColor = n.color; d.style.color = this.getContrastColor(n.color); d.style.paddingLeft = "0.5rem"; d.style.borderLeft = `5px solid ${n.tipo === "Entrega" ? '#d32f2f' : '#1976d2'}`; },
     createDateInput(n, t) { const i = document.createElement("input"); i.type = "date"; i.value = n.fecha || ''; i.onchange = () => this.handleDateTimeChange(n, i, t); return i; },
     createTimeInput(n, d) { const i = document.createElement("input"); i.type = "time"; i.value = n.hora || ''; i.style.width = "75px"; i.onchange = () => this.handleDateTimeChange(n, d, i); return i; },
-    createControls(n) { const c = document.createElement("div"); c.className = "controls"; let d, t; t = this.createTimeInput(n, d); d = this.createDateInput(n, t); const editBtn = document.createElement("button"); editBtn.textContent = "📝"; editBtn.title = "Abrir editor avanzado"; editBtn.onclick = () => this.Editor.open(n.id); const uploadBtn = document.createElement("button"); uploadBtn.textContent = "📎"; uploadBtn.title = "Adjuntar archivo"; uploadBtn.onclick = () => { const fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.accept = ".pdf,.jpg,.jpeg,.png,.txt"; fileInput.onchange = (e) => this.handleFileUpload(n.id, e.target.files[0]); fileInput.click(); }; const s = this.createColorSelect(n); const b = this.createDeleteButton(n); const p = this.createPinButton(n); c.append(d, t, s, editBtn, uploadBtn, b, p); return c; },
-    createAttachmentLink(note) { const container = document.createElement('div'); if (note.attachment_url && note.attachment_filename) { container.style.marginTop = "0.5rem"; const link = document.createElement('a'); link.href = note.attachment_url; link.target = "_blank"; link.textContent = `📄 ${note.attachment_filename}`; link.style.color = this.getContrastColor(note.color); link.style.textDecoration = "underline"; link.style.fontSize = "0.85rem"; container.appendChild(link); } return container; },
+    createControls(n) { const c = document.createElement("div"); c.className = "controls"; let d, t; t = this.createTimeInput(n, d); d = this.createDateInput(n, t); const eB = document.createElement("button"); eB.textContent = "📝"; eB.title = "Abrir editor avanzado"; eB.onclick = () => this.Editor.open(n.id); const uB = document.createElement("button"); uB.textContent = "📎"; uB.title = "Adjuntar archivo"; uB.onclick = () => { const fI = document.createElement('input'); fI.type = 'file'; fI.accept = ".pdf,.jpg,.jpeg,.png,.txt"; fI.onchange = (e) => this.handleFileUpload(n.id, e.target.files[0]); fI.click(); }; const s = this.createColorSelect(n); const b = this.createDeleteButton(n); const p = this.createPinButton(n); c.append(d, t, s, eB, uB, b, p); return c; },
+    createAttachmentLink(n) { const c = document.createElement('div'); if (n.attachment_url && n.attachment_filename) { c.style.marginTop = "0.5rem"; const l = document.createElement('a'); l.href = n.attachment_url; l.target = "_blank"; l.textContent = `📄 ${n.attachment_filename}`; l.style.color = this.getContrastColor(n.color); l.style.textDecoration = "underline"; l.style.fontSize = "0.85rem"; c.appendChild(l); } return c; },
     createTypeLabel(n) { const l = document.createElement("div"); l.className = "note-type-label"; l.textContent = n.tipo || "Clase"; Object.assign(l.style, { fontSize: "0.7em", fontWeight: "bold", marginBottom: "0.2em" }); return l; },
     createNameInput(n) { const i = document.createElement("input"); i.type = "text"; i.placeholder = "Título..."; i.value = n.nombre || ""; i.oninput = () => { n.nombre = i.value; this.debouncedSave(n.id); }; return i; },
     createContentArea(n) { const t = document.createElement("textarea"); t.value = n.contenido; t.oninput = () => { n.contenido = t.value; this.debouncedSave(n.id); }; return t; },
@@ -216,41 +197,32 @@ const NotesApp = {
     createColorSelect(n) { const s = document.createElement("select"); this.COLORS.forEach(c => { const o = document.createElement("option"); o.value = c.value; o.textContent = c.name; if (c.value === n.color) o.selected = true; s.appendChild(o); }); s.onchange = () => { n.color = s.value; this.apiUpdate(n); }; return s; },
     createPinButton(n) { const b = document.createElement("button"); b.textContent = n.fijada ? "📌" : "📍"; b.onclick = () => { n.fijada = !n.fijada; this.apiUpdate(n); }; return b; },
     createDeleteButton(n) { const b = document.createElement("button"); b.textContent = "🗑️"; b.onclick = async () => { if (confirm("¿Seguro que quieres borrar esta nota?")) { await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${n.id}`, { method: 'DELETE' }); await this.refreshAllData(); } }; return b; },
-    updateReminders() { const rl = document.getElementById("reminder-list"); const t = new Date(); const u = [...this.notes.values()].filter(n => n.fecha_hora && new Date(n.fecha_hora) >= t && n.tipo === "Entrega").sort(this.sortNotes).slice(0, 5); rl.innerHTML = ""; u.forEach(n => { const li = document.createElement("li"); li.textContent = `${n.fecha}${n.hora ? ' ' + n.hora : ''} - ${n.nombre || "(sin título)"}`; rl.appendChild(li); }); this.renderLinks(); },
+    updateReminders() { const rL = document.getElementById("reminder-list"); const u = [...this.notes.values()].filter(n => n.fecha_hora && new Date(n.fecha_hora) >= new Date() && n.tipo === "Entrega").sort(this.sortNotes).slice(0, 5); rL.innerHTML = ""; u.forEach(n => { const li = document.createElement("li"); li.textContent = `${n.fecha}${n.hora ? ' ' + n.hora : ''} - ${n.nombre || "(sin título)"}`; rL.appendChild(li); }); this.renderLinks(); },
     renderLinks() { const l = document.getElementById("link-list"); if(!l) return; l.innerHTML = ""; this.links.forEach((u, i) => { const li = document.createElement("li"); const a = document.createElement("a"); a.href = u; a.target = "_blank"; a.textContent = u; const d = document.createElement("button"); d.textContent = "🗑️"; d.onclick = () => { this.links.splice(i, 1); this.renderLinks(); }; li.append(a, d); l.appendChild(li); }); },
     getContrastColor(h) { if(!h) return "#000"; const r=parseInt(h.substr(1,2),16),g=parseInt(h.substr(3,2),16),b=parseInt(h.substr(5,2),16); return ((.299*r+.587*g+.114*b)/255)>.6?"#000":"#fff"; },
-    exportData() { const d = [...this.notes.values()].map(({ fecha, hora, ...rest }) => rest); const data = { notes: d, quickNote: document.getElementById("quick-note")?.value||"", links: this.links, columnNames: this.columnNames }; const b = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }); const u = URL.createObjectURL(b); const a = document.createElement("a"); a.href = u; a.download = "notas.json"; a.click(); URL.revokeObjectURL(u); },
-    async importData(file) { if (!file) return; const reader = new FileReader(); reader.onload = async () => { if (!confirm("¿Estás seguro? Esto reemplazará TODAS las notas actuales.")) return; try { const data = JSON.parse(reader.result); if (data.quickNote) await this.saveQuickNoteToServer(data.quickNote); if (data.columnNames) { this.columnNames = data.columnNames; localStorage.setItem('columnNames', JSON.stringify(this.columnNames));} await this.refreshAllData(); const currentNoteIds = Array.from(this.notes.keys()); if(currentNoteIds.length > 0) { const deletePromises = currentNoteIds.map(id => this.fetchWithAuth(`${API_BASE_URL}/api/notes/${id}`, { method: 'DELETE' })); await Promise.all(deletePromises); } const notesToCreate = (data.notes || []).map(n => { let finalNote = {...n}; if (finalNote.fecha_hora) finalNote.fecha_hora = new Date(finalNote.fecha_hora).toISOString(); delete finalNote.id; return finalNote; }); if (notesToCreate.length > 0) { const postPromises = notesToCreate.map(note => this.fetchWithAuth(`${API_BASE_URL}/api/notes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(note) })); await Promise.all(postPromises); } await this.refreshAllData(); alert("✅ ¡Éxito! Los datos han sido importados."); } catch (error) { alert("❌ Error durante la importación."); console.error('❌ Error detallado:', error); await this.refreshAllData(); } }; reader.readAsText(file); },
+    exportData() { const d = { notes: [...this.notes.values()].map(({ fecha, hora, ...rest }) => rest), quickNote: document.getElementById("quick-note")?.value||"", links: this.links, columnNames: this.columnNames }; const b = new Blob([JSON.stringify(d, null, 2)], { type: "application/json" }); const u = URL.createObjectURL(b); const a = document.createElement("a"); a.href = u; a.download = "notas.json"; a.click(); URL.revokeObjectURL(u); },
+    async importData(file) { if (!file) return; const reader = new FileReader(); reader.onload = async () => { if (!confirm("¿Estás seguro? Esto reemplazará TODAS las notas actuales.")) return; try { const data = JSON.parse(reader.result); if (data.quickNote) await this.saveQuickNoteToServer(data.quickNote); if (data.columnNames) { this.columnNames = data.columnNames; localStorage.setItem('columnNames', JSON.stringify(this.columnNames));} await Promise.all(Array.from(this.notes.keys()).map(id => this.fetchWithAuth(`${API_BASE_URL}/api/notes/${id}`, { method: 'DELETE' }))); const nTC = (data.notes || []).map(n => { let fN = {...n}; if (fN.fecha_hora) fN.fecha_hora = new Date(fN.fecha_hora).toISOString(); delete fN.id; return fN; }); if (nTC.length > 0) await Promise.all(nTC.map(note => this.fetchWithAuth(`${API_BASE_URL}/api/notes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(note) }))); await this.refreshAllData(); alert("✅ ¡Éxito! Los datos han sido importados."); } catch (error) { alert("❌ Error durante la importación."); console.error('❌ Error detallado:', error); } }; reader.readAsText(file); },
     debouncedSave(noteId) { if (this.debounceTimeout) clearTimeout(this.debounceTimeout); this.debounceTimeout = setTimeout(() => { const note = this.notes.get(noteId); if (note) this.apiUpdate(note); }, 1000); },
     async saveQuickNoteToServer(c) { try { await this.fetchWithAuth(`${API_BASE_URL}/api/settings/quicknote`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: c }) }); } catch (e) { console.error('❌ Error al guardar nota rápida:', e); } },
 
-    // --- PUNTO DE ENTRADA DE LA APLICACIÓN ---
+    // --- PUNTO DE ENTRADA Y CONFIGURACIÓN ---
     async init() {
         if (this.isInitialized) return;
-        console.log('🚀 Iniciando aplicación principal...');
         this.isInitialized = true;
-        
         this.Editor.init(this);
         this.setupEventListeners();
-        
         try { 
             const response = await this.fetchWithAuth(`${API_BASE_URL}/api/settings/quicknote`); 
             if (response && response.ok) {
-                const d = await response.json();
-                document.getElementById('quick-note').value = d.value || '';
+                document.getElementById('quick-note').value = (await response.json()).value || '';
             }
         } catch (e) { console.error('❌ No se pudo cargar la nota rápida:', e); }
-
-        const s = localStorage.getItem('columnNames'); 
-        if (s) { try { this.columnNames = JSON.parse(s); } catch (e) { this.columnNames = {}; } }
-        
+        try { this.columnNames = JSON.parse(localStorage.getItem('columnNames')) || {}; } catch (e) { this.columnNames = {}; }
         await this.refreshAllData();
-        this.renderLinks();
         console.log('✅ Aplicación principal iniciada correctamente');
     },
 
     setupEventListeners() {
-        // Eventos de la app principal
         document.getElementById("add-note").onclick = () => this.createNote();
         document.getElementById("export-json").onclick = () => this.exportData();
         document.getElementById("import-json").onchange = (e) => this.importData(e.target.files[0]);
@@ -258,6 +230,16 @@ const NotesApp = {
         const q = document.getElementById("quick-note");
         q.addEventListener('input', () => { if (this.quickNoteDebounce) clearTimeout(this.quickNoteDebounce); this.quickNoteDebounce = setTimeout(() => this.saveQuickNoteToServer(q.value), 1000); });
         window.deletePastNotes = () => this.deletePastNotes();
+
+        // --- Event Listeners para el MODAL de Nueva Nota ---
+        const newNoteForm = document.getElementById('new-note-form');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const newNoteOverlay = document.getElementById('new-note-overlay');
+        newNoteForm.addEventListener('submit', (event) => this._handleCreateNoteSubmit(event));
+        closeModalBtn.addEventListener('click', () => this._closeNewNoteModal());
+        newNoteOverlay.addEventListener('click', (event) => { if (event.target === newNoteOverlay) this._closeNewNoteModal(); });
+        
+        this._populateColorSelector(); // Poblamos el selector de colores una vez
     },
 };
 
@@ -265,17 +247,9 @@ const NotesApp = {
 // 🚀 INICIO GLOBAL
 // ==============================================================
 document.addEventListener('DOMContentLoaded', () => {
-    // Asignar eventos a los botones de autenticación
-    document.getElementById('login-button').addEventListener('click', () => {
-        AuthManager.signInWithGoogle();
-    });
-
-    document.getElementById('logout-button').addEventListener('click', () => {
-        AuthManager.signOut();
-    });
-
-    // Iniciar el gestor de autenticación
+    document.getElementById('login-button').addEventListener('click', () => AuthManager.signInWithGoogle());
+    document.getElementById('logout-button').addEventListener('click', () => AuthManager.signOut());
     AuthManager.init();
 });
 
-window.NotesApp = NotesApp; // Para que los otros módulos puedan accederlo
+window.NotesApp = NotesApp;
