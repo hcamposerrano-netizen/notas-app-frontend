@@ -61,7 +61,7 @@ const NotesApp = {
     columnNames: {},
     columnOrder: [],
     activeColorFilter: 'all',
-    isViewingArchived: false, // ⭐ ESTADO PARA SABER SI VEMOS NOTAS ARCHIVADAS
+    isViewingArchived: false,
     COLORS: [ { name: "Amarillo", value: "#f1e363ff" }, { name: "Azul", value: "#81d4fa" }, { name: "Verde", value: "#78a347ff" }, { name: "Rosa", value: "#b16982ff" }, { name: "Lila", value: "#8b5794ff" }, { name: "Naranja", value: "#ce730cff" }, { name: "Turquesa", value: "#558f97ff" }, { name: "Gris", value: "#afa4a4ff" } ],
 
     async fetchWithAuth(url, options = {}) {
@@ -71,7 +71,6 @@ const NotesApp = {
         return fetch(url, { ...options, headers });
     },
     
-    // ⭐ FUNCIÓN DE CARGA DE DATOS ACTUALIZADA PARA MANEJAR ARCHIVADOS
     async refreshAllData() {
         const endpoint = this.isViewingArchived ? '/api/notes/archived' : '/api/notes';
         try {
@@ -94,7 +93,6 @@ const NotesApp = {
         } catch (error) { console.error(`❌ Error al actualizar nota ${note.id}:`, error); }
     },
     
-    // ⭐ NUEVA FUNCIÓN PARA CAMBIAR EL ESTADO DE ARCHIVO DE UNA NOTA
     async toggleArchiveNote(note) {
         const noteElement = document.querySelector(`.note[data-note-id='${note.id}']`);
         noteElement.classList.add('note-leaving');
@@ -114,7 +112,6 @@ const NotesApp = {
         }, 300);
     },
 
-    // ... (otras funciones como handleFileUpload, createNote, etc. sin cambios) ...
     async handleFileUpload(noteId, file) { if (!file || file.size > 5 * 1024 * 1024) { alert(file ? "❌ El archivo es demasiado grande (máx 5MB)." : "No se seleccionó archivo."); return; } const formData = new FormData(); formData.append('file', file); try { const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${noteId}/upload`, { method: 'POST', body: formData }); if (!response || !response.ok) throw new Error('Error en la respuesta del servidor.'); alert('✅ Archivo subido con éxito!'); await this.refreshAllData(); } catch (error) { console.error('❌ Error al subir el archivo:', error); alert('❌ Hubo un problema al subir el archivo.'); } },
     createNote() { const overlay = document.getElementById('new-note-overlay'); document.getElementById('new-note-form').reset(); overlay.classList.remove('overlay-hidden'); document.getElementById('new-note-nombre').focus(); },
     _populateColorSelector() { const select = document.getElementById('new-note-color'); select.innerHTML = ''; this.COLORS.forEach(color => { const option = document.createElement('option'); option.value = color.value; option.textContent = color.name; if (color.value === "#f1e363ff") option.selected = true; select.appendChild(option); }); },
@@ -133,13 +130,16 @@ const NotesApp = {
                 ? `<h3>🗄️ No hay notas archivadas</h3><p>Puedes archivar notas desde el menú de opciones (⋮).</p>`
                 : `<h3>✨ Tu espacio está listo</h3><p>Crea tu primera nota para empezar a organizarte.</p>`;
             container.innerHTML = `<div class="empty-state-message">${message}</div>`;
-            this.updateReminders(); // Actualiza los recordatorios aunque no haya notas
+            this.updateReminders();
             return;
         }
 
         const grouped = this.groupNotesByColor();
-        for (let [color, group] of Object.entries(grouped)) {
-            const column = this.createColumnForColor(color, group);
+        const sortedColors = this.columnOrder.length > 0 ? this.columnOrder : Object.keys(grouped);
+
+        for (let color of sortedColors) {
+            if (!grouped[color]) continue;
+            const column = this.createColumnForColor(color, grouped[color]);
             if (this.activeColorFilter !== 'all' && this.activeColorFilter !== color) {
                 column.classList.add('column-hidden-by-filter');
             }
@@ -149,13 +149,33 @@ const NotesApp = {
         this._initColumnDragAndDrop();
     },
 
-    createColorFilterPanel() { /* ... esta función se queda igual ... */ },
+    // ✅ CÓDIGO RESTAURADO
+    createColorFilterPanel() {
+        let panel = document.getElementById("color-filter-panel");
+        if (!panel) {
+            panel = document.createElement("div");
+            panel.id = "color-filter-panel";
+            document.getElementById("main-container").prepend(panel);
+        }
+        panel.innerHTML = "";
+        const allBtn = document.createElement("button");
+        allBtn.textContent = "Todos";
+        allBtn.onclick = () => { this.activeColorFilter = 'all'; this.renderNotes(); };
+        if (this.activeColorFilter === 'all') allBtn.classList.add('active');
+        panel.appendChild(allBtn);
+        this.COLORS.forEach(c => {
+            const btn = document.createElement("button");
+            btn.style.backgroundColor = c.value;
+            btn.onclick = () => { this.activeColorFilter = c.value; this.renderNotes(); };
+            if (this.activeColorFilter === c.value) btn.classList.add('active');
+            panel.appendChild(btn);
+        });
+    },
     
-    // ✅ FUNCIÓN CORREGIDA
+    // ✅ CÓDIGO RESTAURADO
     _initColumnDragAndDrop() {
         const container = document.getElementById("columns-container");
-        if (!container || this.isViewingArchived) return;
-
+        if (!container || this.isViewingArchived || window.innerWidth <= 768) return;
         new Sortable(container, {
             animation: 150,
             handle: '.column-title-draggable',
@@ -169,16 +189,106 @@ const NotesApp = {
         });
     },
 
-    sortNotes(a, b) { /* ... esta función se queda igual ... */ },
-    groupNotesByColor() { /* ... esta función se queda igual ... */ },
-    createColumnForColor(c, n) { /* ... esta función se queda igual ... */ },
-    createColumnTitle(c, d) { /* ... esta función se queda igual ... */ },
-    createNoteElement(n) { /* ... esta función se queda igual ... */ },
-    styleNoteElement(d, n) { /* ... esta función se queda igual ... */ },
-    createDateInput(n, t) { /* ... esta función se queda igual ... */ },
-    createTimeInput(n, d) { /* ... esta función se queda igual ... */ },
+    // ✅ CÓDIGO RESTAURADO
+    sortNotes(a, b) {
+        if (a.fijada && !b.fijada) return -1;
+        if (!a.fijada && b.fijada) return 1;
+        if (a.fecha_hora && b.fecha_hora) return new Date(a.fecha_hora) - new Date(b.fecha_hora);
+        if (a.fecha_hora) return -1;
+        if (b.fecha_hora) return 1;
+        return 0;
+    },
 
-    // ⭐ FUNCIÓN DE CONTROLES CORREGIDA PARA INCLUIR EL BOTÓN DE ARCHIVAR ⭐
+    // ✅ CÓDIGO RESTAURADO - ¡ESTA ERA LA CAUSA DEL ERROR!
+    groupNotesByColor() {
+        const grouped = {};
+        this.notes.forEach(note => {
+            const color = note.color || "#f1e363ff";
+            if (!grouped[color]) grouped[color] = [];
+            grouped[color].push(note);
+        });
+        for (let color in grouped) {
+            grouped[color].sort(this.sortNotes);
+        }
+        return grouped;
+    },
+
+    // ✅ CÓDIGO RESTAURADO
+    createColumnForColor(color, notesInGroup) {
+        const column = document.createElement("div");
+        column.className = "column";
+        column.dataset.color = color;
+        const titleContainer = this.createColumnTitle(color, notesInGroup.length);
+        column.appendChild(titleContainer);
+        const notesContainer = document.createElement("div");
+        notesInGroup.forEach(note => notesContainer.appendChild(this.createNoteElement(note)));
+        column.appendChild(notesContainer);
+        return column;
+    },
+    
+    // ✅ CÓDIGO RESTAURADO
+    createColumnTitle(color, noteCount) {
+        const titleContainer = document.createElement("div");
+        titleContainer.className = "column-title-draggable";
+        const colorData = this.COLORS.find(c => c.value === color);
+        const colorName = colorData ? colorData.name : "Sin Color";
+        const titleInput = document.createElement("input");
+        titleInput.type = "text";
+        titleInput.value = this.columnNames[color] || `${colorName} (${noteCount})`;
+        titleInput.onchange = () => {
+            this.columnNames[color] = titleInput.value;
+            localStorage.setItem('columnNames', JSON.stringify(this.columnNames));
+        };
+        titleContainer.appendChild(titleInput);
+        return titleContainer;
+    },
+    
+    // ✅ CÓDIGO RESTAURADO
+    createNoteElement(note) {
+        const noteDiv = document.createElement("div");
+        noteDiv.className = "note";
+        noteDiv.dataset.noteId = note.id;
+        const typeLabel = this.createTypeLabel(note);
+        const nameInput = this.createNameInput(note);
+        const contentArea = this.createContentArea(note);
+        const controls = this.createControls(note, typeLabel);
+        const attachmentLink = this.createAttachmentLink(note);
+        noteDiv.append(typeLabel, nameInput, contentArea, attachmentLink, controls);
+        this.styleNoteElement(noteDiv, note);
+        return noteDiv;
+    },
+    
+    // ✅ CÓDIGO RESTAURADO
+    styleNoteElement(div, note) {
+        div.style.backgroundColor = note.color || "#f1e363ff";
+        const contrastColor = this.getContrastColor(note.color);
+        div.style.color = contrastColor;
+        div.querySelectorAll('input, textarea').forEach(el => el.style.color = contrastColor);
+        if (note.tipo === 'Entrega') {
+            div.style.borderLeft = '4px solid #d32f2f';
+        } else {
+            div.style.borderLeft = '4px solid transparent';
+        }
+    },
+    
+    // ✅ CÓDIGO RESTAURADO
+    createDateInput(note, timeInput) {
+        const dateInput = document.createElement("input");
+        dateInput.type = "date";
+        dateInput.value = note.fecha || "";
+        dateInput.onchange = () => this.handleDateTimeChange(note, dateInput, timeInput);
+        return dateInput;
+    },
+
+    // ✅ CÓDIGO RESTAURADO
+    createTimeInput(note, dateInput) {
+        const timeInput = document.createElement("input");
+        timeInput.type = "time";
+        timeInput.value = note.hora || "";
+        timeInput.onchange = () => this.handleDateTimeChange(note, dateInput, timeInput);
+        return timeInput;
+    },
+
     createControls(n, l) {
         const controlsContainer = document.createElement("div");
         controlsContainer.className = "controls";
@@ -203,7 +313,6 @@ const NotesApp = {
         
         const pinBtn = this.createPinButton(n);
         
-        // ¡AQUÍ ESTÁ! El botón de Archivar
         const archiveBtn = document.createElement("button");
         archiveBtn.innerHTML = this.isViewingArchived ? "🔄<span>Restaurar</span>" : "🗄️<span>Archivar</span>";
         archiveBtn.onclick = (e) => {
@@ -225,7 +334,6 @@ const NotesApp = {
         colorSelectContainer.className = "menu-color-select";
         colorSelectContainer.append(colorSelectLabel, colorSelect);
         
-        // Añadimos TODOS los botones al menú en el orden correcto
         menu.append(editBtn, uploadBtn, pinBtn, archiveBtn, deleteBtn, typeSelectContainer, colorSelectContainer);
         
         moreOptionsBtn.onclick = (e) => {
@@ -244,7 +352,6 @@ const NotesApp = {
         return controlsContainer;
     },
 
-    // ... (resto de funciones constructoras de elementos como createAttachmentLink, createTypeLabel, etc. sin cambios) ...
     createAttachmentLink(n) { const c = document.createElement('div'); if (n.attachment_url && n.attachment_filename) { c.style.marginTop = "0.5rem"; const l = document.createElement('a'); l.href = n.attachment_url; l.target = "_blank"; l.textContent = `📄 ${n.attachment_filename}`; l.style.color = this.getContrastColor(n.color); l.style.textDecoration = "underline"; l.style.fontSize = "0.85rem"; c.appendChild(l); } return c; },
     createTypeLabel(n) { const l = document.createElement("div"); l.className = "note-type-label"; l.textContent = n.tipo || "Clase"; Object.assign(l.style, { fontSize: "0.7em", fontWeight: "bold", marginBottom: "0.2em" }); return l; },
     createNameInput(n) { const i = document.createElement("input"); i.type = "text"; i.placeholder = "Título..."; i.value = n.nombre || ""; i.oninput = () => { n.nombre = i.value; this.debouncedSave(n.id); }; return i; },
@@ -276,7 +383,6 @@ const NotesApp = {
         console.log('✅ Aplicación principal iniciada correctamente');
     },
 
-    // ⭐ FUNCIÓN PARA CAMBIAR ENTRE VISTA NORMAL Y ARCHIVADOS
     _toggleArchivedView() {
         this.isViewingArchived = !this.isViewingArchived;
         const btn = document.getElementById('view-archived-btn');
