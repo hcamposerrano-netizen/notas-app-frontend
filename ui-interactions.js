@@ -18,7 +18,6 @@
         'theme-forest-floor',
         'theme-neon-night',
         'theme-mint-breeze',
-        'theme-cosmic-dusk',
         'theme-desert-canyon'
     ];
     

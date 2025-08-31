@@ -106,21 +106,6 @@ body.theme-mint-breeze {
   --color-calendar-section-border: #59C4EB;
 }
 
-/* --- Tema 7: Anochecer Cósmico (Oscuro) --- */
-body.theme-cosmic-dusk {
-  --color-background: #22235F;
-  --color-text-primary: #A8DACD;
-  --color-text-secondary: #89b3a8;
-  --color-surface: #2d307a;
-  --color-primary-accent: #EB68A0;
-  --color-primary-accent-hover: #de508e;
-  --color-subtle-border: #7A4D9F;
-  --color-scrollbar-track: #1e1f50;
-  --color-scrollbar-thumb: #7A4D9F;
-  --shadow-color: rgba(0, 0, 0, 0.5);
-  --color-calendar-section-bg: #282a6f;
-  --color-calendar-section-border: #EB68A0;
-}
 
 /* --- Tema 8: Cañón del Desierto (Oscuro) --- */
 body.theme-desert-canyon {
