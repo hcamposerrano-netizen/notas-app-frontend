@@ -1,10 +1,10 @@
 // ==============================================================
-// 📱 APLICACIÓN DE NOTAS - VERSIÓN 7.1 (MODAL Y UI MEJORADA)
+// 📱 APLICACIÓN DE NOTAS - VERSIÓN 8.0 (EXPERIENCIA MÓVIL PREMIUM)
 // ==============================================================
 
 // --- CONFIGURACIÓN DE SUPABASE ---
 const SUPABASE_URL = 'https://vtxcjzglafbhdcrehamc.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0eGNqemdsYWZiaGRjcmVoYW1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4NDQzMTIsImV4cCI6MjA3MTQyMDMxMn0.Mc2ot-pr4XVt0pFfbydDu2aCUhduuhT3Tc54tYQfu60';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzILNdiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0eGNqemdsYWZiaGRjcmVoYW1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4NDQzMTIsImV4cCI6MjA3MTQyMDMxMn0.Mc2ot-pr4XVt0pFfbydDu2aCUhduuhT3Tc54tYQfu60';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // --- CONFIGURACIÓN DE LA API ---
@@ -147,8 +147,20 @@ const NotesApp = {
                 body: JSON.stringify(noteData)
             });
             if (!response || !response.ok) throw new Error('Error del servidor al crear la nota.');
+            
+            const newNote = await response.json(); // Obtenemos la nota creada para la animación
+            
             this._closeNewNoteModal();
             await this.refreshAllData();
+
+            // Después de renderizar todo, encontramos la nueva nota y la animamos
+            setTimeout(() => {
+                const newNoteElement = document.querySelector(`.note[data-note-id='${newNote.id}']`);
+                if (newNoteElement) {
+                    newNoteElement.classList.add('note-entering');
+                }
+            }, 50);
+
         } catch (error) { console.error('❌ Error al crear nota desde el modal:', error); alert('Hubo un problema al guardar la nota.'); }
     },
     
@@ -188,15 +200,91 @@ const NotesApp = {
     styleNoteElement(d, n) { d.style.backgroundColor = n.color; d.style.color = this.getContrastColor(n.color); d.style.paddingLeft = "0.5rem"; d.style.borderLeft = `5px solid ${n.tipo === "Entrega" ? '#d32f2f' : '#1976d2'}`; },
     createDateInput(n, t) { const i = document.createElement("input"); i.type = "date"; i.value = n.fecha || ''; i.onchange = () => this.handleDateTimeChange(n, i, t); return i; },
     createTimeInput(n, d) { const i = document.createElement("input"); i.type = "time"; i.value = n.hora || ''; i.style.width = "75px"; i.onchange = () => this.handleDateTimeChange(n, d, i); return i; },
-    createControls(n) { const c = document.createElement("div"); c.className = "controls"; let d, t; t = this.createTimeInput(n, d); d = this.createDateInput(n, t); const eB = document.createElement("button"); eB.textContent = "📝"; eB.title = "Abrir editor avanzado"; eB.onclick = () => this.Editor.open(n.id); const uB = document.createElement("button"); uB.textContent = "📎"; uB.title = "Adjuntar archivo"; uB.onclick = () => { const fI = document.createElement('input'); fI.type = 'file'; fI.accept = ".pdf,.jpg,.jpeg,.png,.txt"; fI.onchange = (e) => this.handleFileUpload(n.id, e.target.files[0]); fI.click(); }; const s = this.createColorSelect(n); const b = this.createDeleteButton(n); const p = this.createPinButton(n); c.append(d, t, s, eB, uB, b, p); return c; },
+    
+    // ⭐ NUEVA FUNCIÓN DE CONTROLES CON MENÚ DESPLEGABLE ⭐
+    createControls(n) {
+        const controlsContainer = document.createElement("div");
+        controlsContainer.className = "controls";
+    
+        let dateInput, timeInput;
+        timeInput = this.createTimeInput(n, dateInput);
+        dateInput = this.createDateInput(n, timeInput);
+        controlsContainer.append(dateInput, timeInput);
+    
+        const moreOptionsBtn = document.createElement("button");
+        moreOptionsBtn.className = "more-options-btn";
+        moreOptionsBtn.textContent = "⋮";
+        moreOptionsBtn.title = "Más opciones";
+        
+        const menu = document.createElement("div");
+        menu.className = "note-menu";
+    
+        const editBtn = document.createElement("button");
+        editBtn.innerHTML = "📝<span>Editar Avanzado</span>";
+        editBtn.onclick = () => this.Editor.open(n.id);
+    
+        const uploadBtn = document.createElement("button");
+        uploadBtn.innerHTML = "📎<span>Adjuntar Archivo</span>";
+        uploadBtn.onclick = () => {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = ".pdf,.jpg,.jpeg,.png,.txt";
+            fileInput.onchange = (e) => this.handleFileUpload(n.id, e.target.files[0]);
+            fileInput.click();
+        };
+    
+        const pinBtn = this.createPinButton(n);
+        pinBtn.innerHTML = n.fijada ? "📌<span>Desfijar Nota</span>" : "📍<span>Fijar Nota</span>";
+    
+        const deleteBtn = this.createDeleteButton(n);
+        deleteBtn.innerHTML = "🗑️<span>Borrar Nota</span>";
+    
+        const colorSelectLabel = document.createElement("label");
+        colorSelectLabel.textContent = "🎨 Color:";
+        const colorSelect = this.createColorSelect(n);
+        const colorSelectContainer = document.createElement("div");
+        colorSelectContainer.className = "menu-color-select";
+        colorSelectContainer.append(colorSelectLabel, colorSelect);
+    
+        menu.append(editBtn, uploadBtn, pinBtn, deleteBtn, colorSelectContainer);
+        
+        moreOptionsBtn.onclick = (e) => {
+            e.stopPropagation();
+            document.querySelectorAll('.note-menu.show').forEach(m => {
+                if (m !== menu) m.classList.remove('show');
+            });
+            menu.classList.toggle('show');
+        };
+    
+        controlsContainer.append(moreOptionsBtn, menu);
+        return controlsContainer;
+    },
+
     createAttachmentLink(n) { const c = document.createElement('div'); if (n.attachment_url && n.attachment_filename) { c.style.marginTop = "0.5rem"; const l = document.createElement('a'); l.href = n.attachment_url; l.target = "_blank"; l.textContent = `📄 ${n.attachment_filename}`; l.style.color = this.getContrastColor(n.color); l.style.textDecoration = "underline"; l.style.fontSize = "0.85rem"; c.appendChild(l); } return c; },
     createTypeLabel(n) { const l = document.createElement("div"); l.className = "note-type-label"; l.textContent = n.tipo || "Clase"; Object.assign(l.style, { fontSize: "0.7em", fontWeight: "bold", marginBottom: "0.2em" }); return l; },
     createNameInput(n) { const i = document.createElement("input"); i.type = "text"; i.placeholder = "Título..."; i.value = n.nombre || ""; i.oninput = () => { n.nombre = i.value; this.debouncedSave(n.id); }; return i; },
     createContentArea(n) { const t = document.createElement("textarea"); t.value = n.contenido; t.oninput = () => { n.contenido = t.value; this.debouncedSave(n.id); }; return t; },
     createTypeSelect(n, l) { const s = document.createElement("select"); ["Clase", "Entrega"].forEach(t => { const o = document.createElement("option"); o.value = t; o.textContent = t; if (t === n.tipo) o.selected = true; s.appendChild(o); }); s.addEventListener("change", () => { n.tipo = s.value; l.textContent = s.value; this.styleNoteElement(s.closest('.note'), n); this.apiUpdate(n); }); return s; },
     createColorSelect(n) { const s = document.createElement("select"); this.COLORS.forEach(c => { const o = document.createElement("option"); o.value = c.value; o.textContent = c.name; if (c.value === n.color) o.selected = true; s.appendChild(o); }); s.onchange = () => { n.color = s.value; this.apiUpdate(n); }; return s; },
-    createPinButton(n) { const b = document.createElement("button"); b.textContent = n.fijada ? "📌" : "📍"; b.onclick = () => { n.fijada = !n.fijada; this.apiUpdate(n); }; return b; },
-    createDeleteButton(n) { const b = document.createElement("button"); b.textContent = "🗑️"; b.onclick = async () => { if (confirm("¿Seguro que quieres borrar esta nota?")) { await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${n.id}`, { method: 'DELETE' }); await this.refreshAllData(); } }; return b; },
+    createPinButton(n) { const b = document.createElement("button"); b.onclick = (e) => { e.stopPropagation(); n.fijada = !n.fijada; this.apiUpdate(n); }; return b; },
+    
+    // ⭐ NUEVA FUNCIÓN DE BORRADO CON ANIMACIÓN ⭐
+    createDeleteButton(n) {
+        const b = document.createElement("button");
+        b.onclick = async (e) => {
+            e.stopPropagation();
+            if (confirm("¿Seguro que quieres borrar esta nota?")) {
+                const noteElement = b.closest('.note');
+                noteElement.classList.add('note-leaving');
+                setTimeout(async () => {
+                    await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${n.id}`, { method: 'DELETE' });
+                    await this.refreshAllData();
+                }, 300);
+            }
+        };
+        return b;
+    },
+
     updateReminders() { const rL = document.getElementById("reminder-list"); const u = [...this.notes.values()].filter(n => n.fecha_hora && new Date(n.fecha_hora) >= new Date() && n.tipo === "Entrega").sort(this.sortNotes).slice(0, 5); rL.innerHTML = ""; u.forEach(n => { const li = document.createElement("li"); li.textContent = `${n.fecha}${n.hora ? ' ' + n.hora : ''} - ${n.nombre || "(sin título)"}`; rL.appendChild(li); }); this.renderLinks(); },
     renderLinks() { const l = document.getElementById("link-list"); if(!l) return; l.innerHTML = ""; this.links.forEach((u, i) => { const li = document.createElement("li"); const a = document.createElement("a"); a.href = u; a.target = "_blank"; a.textContent = u; const d = document.createElement("button"); d.textContent = "🗑️"; d.onclick = () => { this.links.splice(i, 1); this.renderLinks(); }; li.append(a, d); l.appendChild(li); }); },
     getContrastColor(h) { if(!h) return "#000"; const r=parseInt(h.substr(1,2),16),g=parseInt(h.substr(3,2),16),b=parseInt(h.substr(5,2),16); return ((.299*r+.587*g+.114*b)/255)>.6?"#000":"#fff"; },
@@ -231,7 +319,6 @@ const NotesApp = {
         q.addEventListener('input', () => { if (this.quickNoteDebounce) clearTimeout(this.quickNoteDebounce); this.quickNoteDebounce = setTimeout(() => this.saveQuickNoteToServer(q.value), 1000); });
         window.deletePastNotes = () => this.deletePastNotes();
 
-        // --- Event Listeners para el MODAL de Nueva Nota ---
         const newNoteForm = document.getElementById('new-note-form');
         const closeModalBtn = document.getElementById('close-modal-btn');
         const newNoteOverlay = document.getElementById('new-note-overlay');
@@ -239,7 +326,7 @@ const NotesApp = {
         closeModalBtn.addEventListener('click', () => this._closeNewNoteModal());
         newNoteOverlay.addEventListener('click', (event) => { if (event.target === newNoteOverlay) this._closeNewNoteModal(); });
         
-        this._populateColorSelector(); // Poblamos el selector de colores una vez
+        this._populateColorSelector();
     },
 };
 

@@ -1,3 +1,7 @@
+// ==============================================================
+// 🎨 INTERACCIONES DE LA INTERFAZ DE USUARIO
+// ==============================================================
+
 (function() {
   // --- LÓGICA DEL MENÚ DESLIZABLE ---
   const toggleBtn = document.querySelector('.panel-toggle');
@@ -19,30 +23,54 @@
   const body = document.body;
 
   if (themeToggleBtn) {
-    // Función para actualizar el ícono del botón
     const updateIcon = () => {
-      if (body.classList.contains('dark-mode')) {
-        themeToggleBtn.textContent = '☀️'; // Sol si está en modo oscuro
-      } else {
-        themeToggleBtn.textContent = '🌙'; // Luna si está en modo claro
-      }
+      themeToggleBtn.textContent = body.classList.contains('dark-mode') ? '☀️' : '🌙';
     };
 
-    // Evento de clic para cambiar el tema
     themeToggleBtn.addEventListener('click', () => {
       body.classList.toggle('dark-mode');
-      // Guardar la preferencia del usuario en localStorage
       localStorage.setItem('theme', body.classList.contains('dark-mode') ? 'dark' : 'light');
       updateIcon();
     });
 
-    // Cargar el tema y actualizar el ícono al iniciar
     const savedTheme = localStorage.getItem('theme');
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
     if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
         body.classList.add('dark-mode');
     }
     updateIcon();
   }
+})();
+
+
+// ⭐ NUEVA LÓGICA PARA EL PANEL ATENUADO Y CIERRE DE MENÚS ⭐
+(function() {
+    const body = document.body;
+    const panel = document.getElementById('control-panel');
+    const toggleBtn = document.querySelector('.panel-toggle');
+
+    let dimmer = document.getElementById('panel-dimmer');
+    if (!dimmer) {
+        dimmer = document.createElement('div');
+        dimmer.id = 'panel-dimmer';
+        body.appendChild(dimmer);
+    }
+
+    const toggleDimmer = () => {
+        dimmer.classList.toggle('show', panel.classList.contains('show'));
+    };
+    
+    if (toggleBtn && panel) {
+        toggleBtn.addEventListener('click', toggleDimmer);
+        dimmer.addEventListener('click', () => {
+            panel.classList.remove('show');
+            toggleDimmer();
+        });
+    }
+
+    window.addEventListener('click', () => {
+        document.querySelectorAll('.note-menu.show').forEach(menu => {
+            menu.classList.remove('show');
+        });
+    });
 })();
