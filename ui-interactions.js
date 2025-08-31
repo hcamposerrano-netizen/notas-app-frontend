@@ -10,7 +10,22 @@
   // --- LÓGICA DE TEMAS MÚLTIPLES ---
   const themeToggleBtn = document.getElementById('theme-toggle');
   if (themeToggleBtn) {
-    const themes = ['theme-light', 'theme-dark', 'theme-autumn', 'theme-ocean'];
+    // ✅ ARRAY ACTUALIZADO CON TODOS LOS TEMAS
+    const themes = [
+        'theme-light', 
+        'theme-dark', 
+        'theme-autumn', 
+        'theme-ocean',
+        'theme-coastal-sunset',
+        'theme-vintage-rose',
+        'theme-meadow',
+        'theme-retro-groove',
+        'theme-pastel-pop',
+        'theme-terracotta',
+        'theme-sorbet',
+        'theme-caramel-blue',
+        'theme-forest-floor'
+    ];
     
     const applyTheme = (theme) => {
       // 1. Limpiar temas antiguos
@@ -38,7 +53,7 @@
     const savedTheme = localStorage.getItem('theme');
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     
-    if (savedTheme) {
+    if (savedTheme && themes.includes(savedTheme)) {
         applyTheme(savedTheme);
     } else if (systemPrefersDark) {
         applyTheme('theme-dark');

@@ -70,6 +70,155 @@ body.theme-ocean {
   --color-calendar-section-border: #88c0d0;
 }
 
+/* ================================
+   ✨ NUEVOS TEMAS AÑADIDOS
+   ================================ */
+
+/* --- Tema 5: Atardecer Costero --- */
+body.theme-coastal-sunset {
+  --color-background: #f0f8ff;
+  --color-text-primary: #3988A4;
+  --color-text-secondary: #67C2D4;
+  --color-surface: #ffffff;
+  --color-primary-accent: #D0944D;
+  --color-primary-accent-hover: #CB625F;
+  --color-subtle-border: #e0f0ff;
+  --color-scrollbar-track: #bce0f5;
+  --color-scrollbar-thumb: #67C2D4;
+  --shadow-color: rgba(57, 136, 164, 0.1);
+  --color-calendar-section-bg: #fafdff;
+  --color-calendar-section-border: #D0944D;
+}
+
+/* --- Tema 6: Rosa Vintage --- */
+body.theme-vintage-rose {
+  --color-background: #fdf6f4;
+  --color-text-primary: #53331F;
+  --color-text-secondary: #866C69;
+  --color-surface: #ffffff;
+  --color-primary-accent: #CD8C8C;
+  --color-primary-accent-hover: #c97c7c;
+  --color-subtle-border: #D4B8B1;
+  --color-scrollbar-track: #e6dcd9;
+  --color-scrollbar-thumb: #866C69;
+  --shadow-color: rgba(83, 51, 31, 0.1);
+  --color-calendar-section-bg: #fffafa;
+  --color-calendar-section-border: #CD8C8C;
+}
+
+/* --- Tema 7: Pradera --- */
+body.theme-meadow {
+  --color-background: #f4f9f4;
+  --color-text-primary: #2963A2;
+  --color-text-secondary: #4CAABC;
+  --color-surface: #ffffff;
+  --color-primary-accent: #9FA65A;
+  --color-primary-accent-hover: #8a914c;
+  --color-subtle-border: #e8f0e8;
+  --color-scrollbar-track: #dbe6db;
+  --color-scrollbar-thumb: #72C2C9;
+  --shadow-color: rgba(41, 99, 162, 0.1);
+  --color-calendar-section-bg: #fbfcfb;
+  --color-calendar-section-border: #9FA65A;
+}
+
+/* --- Tema 8: Ritmo Retro (Oscuro) --- */
+body.theme-retro-groove {
+  --color-background: #144058;
+  --color-text-primary: #f0f0f0;
+  --color-text-secondary: #a8c0ce;
+  --color-surface: #1a4c68;
+  --color-primary-accent: #E58D2E;
+  --color-primary-accent-hover: #DD671E;
+  --color-subtle-border: #4D181C;
+  --color-scrollbar-track: #0f3041;
+  --color-scrollbar-thumb: #4D181C;
+  --shadow-color: rgba(0, 0, 0, 0.5);
+  --color-calendar-section-bg: #1f5878;
+  --color-calendar-section-border: #E58D2E;
+}
+
+/* --- Tema 9: Pop Pastel --- */
+body.theme-pastel-pop {
+  --color-background: #f0fcfb;
+  --color-text-primary: #573C33;
+  --color-text-secondary: #a08c86;
+  --color-surface: #ffffff;
+  --color-primary-accent: #D2385A;
+  --color-primary-accent-hover: #c13253;
+  --color-subtle-border: #DE9DC2;
+  --color-scrollbar-track: #f0e8ed;
+  --color-scrollbar-thumb: #DE9DC2;
+  --shadow-color: rgba(87, 60, 51, 0.1);
+  --color-calendar-section-bg: #fdfafe;
+  --color-calendar-section-border: #D2385A;
+}
+
+/* --- Tema 10: Terracota (Oscuro) --- */
+body.theme-terracotta {
+  --color-background: #2a2b2b;
+  --color-text-primary: #f1f1f1;
+  --color-text-secondary: #B7B9A8;
+  --color-surface: #3c3d3d;
+  --color-primary-accent: #E36858;
+  --color-primary-accent-hover: #d95847;
+  --color-subtle-border: #555;
+  --color-scrollbar-track: #0C0D0D;
+  --color-scrollbar-thumb: #D1B5A3;
+  --shadow-color: rgba(12, 13, 13, 0.5);
+  --color-calendar-section-bg: #444;
+  --color-calendar-section-border: #E36858;
+}
+
+/* --- Tema 11: Sorbete --- */
+body.theme-sorbet {
+  --color-background: #fff8f9;
+  --color-text-primary: #6b4c42;
+  --color-text-secondary: #a68f87;
+  --color-surface: #ffffff;
+  --color-primary-accent: #E3856B;
+  --color-primary-accent-hover: #EEC95C;
+  --color-subtle-border: #EECCD3;
+  --color-scrollbar-track: #e3d9d3;
+  --color-scrollbar-thumb: #80C4B7;
+  --shadow-color: rgba(227, 133, 107, 0.1);
+  --color-calendar-section-bg: #fffcf8;
+  --color-calendar-section-border: #E3856B;
+}
+
+/* --- Tema 12: Caramelo y Azul --- */
+body.theme-caramel-blue {
+  --color-background: #fbfaf5;
+  --color-text-primary: #6C3622;
+  --color-text-secondary: #966f5e;
+  --color-surface: #ffffff;
+  --color-primary-accent: #6FA1BB;
+  --color-primary-accent-hover: #CF9032;
+  --color-subtle-border: #e6e0d4;
+  --color-scrollbar-track: #e6dcca;
+  --color-scrollbar-thumb: #CD7E2A;
+  --shadow-color: rgba(108, 54, 34, 0.1);
+  --color-calendar-section-bg: #fdfcf9;
+  --color-calendar-section-border: #6FA1BB;
+}
+
+/* --- Tema 13: Bosque (Oscuro) --- */
+body.theme-forest-floor {
+  --color-background: #2e2c2b;
+  --color-text-primary: #f0e9e5;
+  --color-text-secondary: #A4998E;
+  --color-surface: #3f3c3a;
+  --color-primary-accent: #507B6A;
+  --color-primary-accent-hover: #6a9688;
+  --color-subtle-border: #6A513C;
+  --color-scrollbar-track: #4B1816;
+  --color-scrollbar-thumb: #A4998E;
+  --shadow-color: rgba(75, 24, 22, 0.4);
+  --color-calendar-section-bg: #4a4643;
+  --color-calendar-section-border: #507B6A;
+}
+
+
 /* --- 2. ESTILOS GENERALES Y DE ESCRITORIO --- */
 body {
   margin: 0;
@@ -134,16 +283,18 @@ body {
 .panel-section { border-bottom: 1px solid var(--color-subtle-border); padding-bottom: 1rem; margin-bottom: 1rem; }
 .panel-section:last-of-type { border-bottom: none; }
 .panel-section h3 { margin-top: 0; margin-bottom: 0.75rem; }
-.action-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
-/* --- DESPUÉS (CÓDIGO CORREGIDO) --- */
+.action-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    grid-auto-rows: 1fr;
+}
 .action-buttons button, .action-buttons .custom-file-upload {
     width: 100%;
     padding: 0.6rem;
     font-size: 0.9rem;
     text-align: center;
     box-sizing: border-box;
-
-    /* ▼▼▼ AÑADE ESTAS LÍNEAS ▼▼▼ */
     display: flex;
     align-items: center;
     justify-content: center;
