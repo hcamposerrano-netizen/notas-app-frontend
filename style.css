@@ -135,7 +135,19 @@ body {
 .panel-section:last-of-type { border-bottom: none; }
 .panel-section h3 { margin-top: 0; margin-bottom: 0.75rem; }
 .action-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
-.action-buttons button, .action-buttons .custom-file-upload { width: 100%; padding: 0.6rem; font-size: 0.9rem; text-align: center; box-sizing: border-box; }
+/* --- DESPUÉS (CÓDIGO CORREGIDO) --- */
+.action-buttons button, .action-buttons .custom-file-upload {
+    width: 100%;
+    padding: 0.6rem;
+    font-size: 0.9rem;
+    text-align: center;
+    box-sizing: border-box;
+
+    /* ▼▼▼ AÑADE ESTAS LÍNEAS ▼▼▼ */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 input[type="file"] { display: none; }
 .custom-file-upload { display: inline-block; cursor: pointer; background-color: var(--color-primary-accent); color: #fff; border-radius: 4px; transition: background-color 0.2s ease; }
 .custom-file-upload:hover { background-color: var(--color-primary-accent-hover); }
