@@ -59,6 +59,7 @@ const NotesApp = {
     quickNote: "",
     links: [],
     columnNames: {},
+    activeColorFilter: 'all', // 'all' para mostrar todas, o un color hex.
     COLORS: [ { name: "Amarillo", value: "#f1e363ff" }, { name: "Azul", value: "#81d4fa" }, { name: "Verde", value: "#78a347ff" }, { name: "Rosa", value: "#b16982ff" }, { name: "Lila", value: "#8b5794ff" }, { name: "Naranja", value: "#ce730cff" }, { name: "Turquesa", value: "#558f97ff" }, { name: "Gris", value: "#afa4a4ff" } ],
 
     async fetchWithAuth(url, options = {}) {
@@ -122,7 +123,6 @@ const NotesApp = {
         });
     },
 
-    // ✅ LÓGICA DE CREACIÓN DE NOTA CORREGIDA PARA ANIMACIÓN
     async _handleCreateNoteSubmit(event) {
         event.preventDefault();
         const noteData = {
@@ -140,10 +140,9 @@ const NotesApp = {
             if (!response || !response.ok) throw new Error('Error del servidor al crear la nota.');
             
             const newNote = await response.json();
-            this.notes.set(newNote.id, newNote); // Añadimos la nueva nota al estado local
-            this.renderNotes(); // Re-renderizamos la UI con la nueva nota
+            this.notes.set(newNote.id, newNote);
+            this.renderNotes();
             
-            // Ahora que la nota está en el DOM, la encontramos y aplicamos la animación
             const newNoteElement = document.querySelector(`.note[data-note-id='${newNote.id}']`);
             if (newNoteElement) {
                 newNoteElement.classList.add('note-entering');
@@ -174,10 +173,53 @@ const NotesApp = {
         } catch (error) { console.error('❌ Error durante el borrado en lote:', error); }
     },
       
-    renderNotes() { const c = document.getElementById("columns-container"); c.innerHTML = ""; const g = this.groupNotesByColor(); for (let [color, group] of Object.entries(g)) { this.createColumnForColor(color, group, c); } this.updateReminders(); },
+    renderNotes() {
+        this.createColorFilterPanel();
+        const container = document.getElementById("columns-container");
+        container.innerHTML = "";
+        const grouped = this.groupNotesByColor();
+        for (let [color, group] of Object.entries(grouped)) {
+            const column = this.createColumnForColor(color, group);
+            if (this.activeColorFilter !== 'all' && this.activeColorFilter !== color) {
+                column.style.display = 'none';
+            }
+            container.appendChild(column);
+        }
+        this.updateReminders();
+    },
+
+    createColorFilterPanel() {
+        let panel = document.getElementById('color-filter-panel');
+        if (!panel) {
+            panel = document.createElement('div');
+            panel.id = 'color-filter-panel';
+            const mainContainer = document.getElementById('main-container');
+            mainContainer.prepend(panel);
+        }
+        panel.innerHTML = '';
+        const usedColors = [...new Set(Array.from(this.notes.values()).map(n => n.color))];
+        if (usedColors.length <= 1) { panel.style.display = 'none'; return; }
+        
+        panel.style.display = 'flex';
+        const allButton = document.createElement('button');
+        allButton.textContent = 'Todas';
+        allButton.className = this.activeColorFilter === 'all' ? 'active' : '';
+        allButton.onclick = () => { this.activeColorFilter = 'all'; this.renderNotes(); };
+        panel.appendChild(allButton);
+
+        usedColors.forEach(color => {
+            const colorButton = document.createElement('button');
+            colorButton.style.backgroundColor = color;
+            colorButton.className = this.activeColorFilter === color ? 'active' : '';
+            colorButton.title = this.COLORS.find(c => c.value === color)?.name || color;
+            colorButton.onclick = () => { this.activeColorFilter = color; this.renderNotes(); };
+            panel.appendChild(colorButton);
+        });
+    },
+
     sortNotes(a, b) { if (b.fijada !== a.fijada) return b.fijada - a.fijada; const dA = a.fecha_hora ? new Date(a.fecha_hora) : null; const dB = b.fecha_hora ? new Date(b.fecha_hora) : null; if (!dA && dB) return 1; if (dA && !dB) return -1; return dA - dB; },
     groupNotesByColor() { const g = {}; for (let n of this.notes.values()) { (g[n.color] = g[n.color] || []).push(n); } for (let group of Object.values(g)) { group.sort(this.sortNotes); } return g; },
-    createColumnForColor(c, n, cont) { const col = document.createElement("div"); col.className = "column"; const d = this.COLORS.find(cl => cl.value === c)?.name || "Sin nombre"; const t = this.createColumnTitle(c, d); col.appendChild(t); n.forEach(note => col.appendChild(this.createNoteElement(note))); cont.appendChild(col); },
+    createColumnForColor(c, n) { const col = document.createElement("div"); col.className = "column"; const d = this.COLORS.find(cl => cl.value === c)?.name || "Sin nombre"; const t = this.createColumnTitle(c, d); col.appendChild(t); n.forEach(note => col.appendChild(this.createNoteElement(note))); return col; },
     createColumnTitle(c, d) { const i = document.createElement("input"); i.type = "text"; i.placeholder = d; i.value = this.columnNames[c] || d; Object.assign(i.style, { fontWeight: "bold", fontSize: "1.1em", marginBottom: "0.5em", border: "none", borderBottom: "2px solid #ccc", background: "transparent", textAlign: "center", width: "100%" }); i.oninput = () => { this.columnNames[c] = i.value; localStorage.setItem('columnNames', JSON.stringify(this.columnNames)); }; return i; },
     createNoteElement(n) { const d = document.createElement("div"); d.className = "note"; d.dataset.noteId = n.id; this.styleNoteElement(d, n); const l = this.createTypeLabel(n); const i = this.createNameInput(n); const s = this.createTypeSelect(n, l); const t = this.createContentArea(n); const aL = this.createAttachmentLink(n); const ctrl = this.createControls(n); const cC = this.getContrastColor(n.color); i.style.color = cC; t.style.color = cC; d.append(l, i, s, t, aL, ctrl); return d; },
     styleNoteElement(d, n) { d.style.backgroundColor = n.color; d.style.color = this.getContrastColor(n.color); d.style.paddingLeft = "0.5rem"; d.style.borderLeft = `5px solid ${n.tipo === "Entrega" ? '#d32f2f' : '#1976d2'}`; },
@@ -193,7 +235,7 @@ const NotesApp = {
         controlsContainer.append(dateInput, timeInput);
         const moreOptionsBtn = document.createElement("button");
         moreOptionsBtn.className = "more-options-btn";
-        moreOptionsBtn.textContent = "⋮";
+        moreOptionsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>`;
         moreOptionsBtn.title = "Más opciones";
         const menu = document.createElement("div");
         menu.className = "note-menu";
@@ -224,23 +266,14 @@ const NotesApp = {
     createTypeSelect(n, l) { const s = document.createElement("select"); ["Clase", "Entrega"].forEach(t => { const o = document.createElement("option"); o.value = t; o.textContent = t; if (t === n.tipo) o.selected = true; s.appendChild(o); }); s.addEventListener("change", () => { n.tipo = s.value; l.textContent = s.value; this.styleNoteElement(s.closest('.note'), n); this.apiUpdate(n); }); return s; },
     createColorSelect(n) { const s = document.createElement("select"); this.COLORS.forEach(c => { const o = document.createElement("option"); o.value = c.value; o.textContent = c.name; if (c.value === n.color) o.selected = true; s.appendChild(o); }); s.onchange = () => { n.color = s.value; this.apiUpdate(n); }; return s; },
     
-    // ✅ LÓGICA DE FIJAR NOTA CORREGIDA PARA ACTUALIZAR TEXTO
     createPinButton(n) {
         const b = document.createElement("button");
-        const updatePinButtonState = () => {
-            b.innerHTML = n.fijada ? "📌<span>Desfijar Nota</span>" : "📍<span>Fijar Nota</span>";
-        };
-        b.onclick = (e) => {
-            e.stopPropagation();
-            n.fijada = !n.fijada;
-            updatePinButtonState(); // Actualiza el texto inmediatamente
-            this.apiUpdate(n);
-        };
-        updatePinButtonState(); // Estado inicial
+        const updatePinButtonState = () => { b.innerHTML = n.fijada ? "📌<span>Desfijar Nota</span>" : "📍<span>Fijar Nota</span>"; };
+        b.onclick = (e) => { e.stopPropagation(); n.fijada = !n.fijada; updatePinButtonState(); this.apiUpdate(n); };
+        updatePinButtonState();
         return b;
     },
     
-    // ✅ LÓGICA DE BORRADO CORREGIDA PARA ANIMACIÓN
     createDeleteButton(n) {
         const b = document.createElement("button");
         b.innerHTML = "🗑️<span>Borrar Nota</span>";
@@ -251,7 +284,6 @@ const NotesApp = {
                 noteElement.classList.add('note-leaving');
                 setTimeout(async () => {
                     await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${n.id}`, { method: 'DELETE' });
-                    // No refrescamos todo, solo quitamos la nota del estado local
                     this.notes.delete(n.id);
                     this.renderNotes();
                 }, 300);

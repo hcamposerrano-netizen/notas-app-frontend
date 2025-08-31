@@ -12,9 +12,7 @@
 </head>
 <body>
 
-    <!-- ======================================================= -->
-    <!-- CONTENEDOR PARA EL ESTADO "NO AUTENTICADO"              -->
-    <!-- ======================================================= -->
+    <!-- Contenedor para el estado "No Autenticado" -->
     <div id="auth-container" style="display: none; text-align: center; padding: 50px;">
         <h1>Bienvenido a tu App de Notas</h1>
         <p>Por favor, inicia sesión para continuar.</p>
@@ -23,14 +21,13 @@
         </button>
     </div>
 
-    <!-- ======================================================= -->
-    <!-- CONTENEDOR DE LA APP PRINCIPAL                          -->
-    <!-- ======================================================= -->
+    <!-- Contenedor de la App Principal -->
     <div id="app-container" style="display: none; height: 100vh; flex-direction: column;">
         
         <button class="panel-toggle">☰</button>
 
         <main id="main-container">
+            <!-- El panel de filtros por color se insertará aquí mediante JS -->
             <div id="columns-container"></div>
             <aside id="control-panel">
                 <div class="panel-header">
@@ -73,9 +70,7 @@
         </footer>
     </div>
 
-    <!-- ============================================= -->
-    <!--          MODAL PARA CREAR NUEVA NOTA          -->
-    <!-- ============================================= -->
+    <!-- Modal para Crear Nueva Nota -->
     <div id="new-note-overlay" class="overlay-hidden">
         <div id="new-note-modal">
             <div class="modal-header">
@@ -101,9 +96,7 @@
                     </div>
                     <div class="form-group">
                         <label for="new-note-color">Color</label>
-                        <select id="new-note-color">
-                            <!-- Los colores se cargarán aquí con JS -->
-                        </select>
+                        <select id="new-note-color"></select>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -113,9 +106,7 @@
         </div>
     </div>
 
-    <!-- ============================================= -->
-    <!--          CARGA DE SCRIPTS (ORDEN CORRECTO)    -->
-    <!-- ============================================= -->
+    <!-- Carga de Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="app.js"></script>

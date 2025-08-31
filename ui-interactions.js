@@ -43,7 +43,7 @@
 })();
 
 
-// ⭐ NUEVA LÓGICA PARA EL PANEL ATENUADO Y CIERRE DE MENÚS ⭐
+// --- LÓGICA PARA EL PANEL ATENUADO (DIMMER) Y CIERRE DE MENÚS ---
 (function() {
     const body = document.body;
     const panel = document.getElementById('control-panel');
@@ -61,13 +61,15 @@
     };
     
     if (toggleBtn && panel) {
-        toggleBtn.addEventListener('click', toggleDimmer);
+        // Corregimos el listener para que se active después de que la clase 'show' cambie
+        toggleBtn.addEventListener('click', () => setTimeout(toggleDimmer, 0));
         dimmer.addEventListener('click', () => {
             panel.classList.remove('show');
             toggleDimmer();
         });
     }
 
+    // Cierra menús de notas al hacer click en cualquier otro lugar
     window.addEventListener('click', () => {
         document.querySelectorAll('.note-menu.show').forEach(menu => {
             menu.classList.remove('show');
