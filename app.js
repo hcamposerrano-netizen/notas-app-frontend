@@ -222,54 +222,99 @@ const NotesApp = {
     groupNotesByColor() { const g = {}; for (let n of this.notes.values()) { (g[n.color] = g[n.color] || []).push(n); } for (let group of Object.values(g)) { group.sort(this.sortNotes); } return g; },
     createColumnForColor(c, n) { const col = document.createElement("div"); col.className = "column"; const d = this.COLORS.find(cl => cl.value === c)?.name || "Sin nombre"; const t = this.createColumnTitle(c, d); col.appendChild(t); n.forEach(note => col.appendChild(this.createNoteElement(note))); return col; },
     createColumnTitle(c, d) { const i = document.createElement("input"); i.type = "text"; i.placeholder = d; i.value = this.columnNames[c] || d; Object.assign(i.style, { fontWeight: "bold", fontSize: "1.1em", marginBottom: "0.5em", border: "none", borderBottom: "2px solid #ccc", background: "transparent", textAlign: "center", width: "100%" }); i.oninput = () => { this.columnNames[c] = i.value; localStorage.setItem('columnNames', JSON.stringify(this.columnNames)); }; return i; },
-    createNoteElement(n) { const d = document.createElement("div"); d.className = "note"; d.dataset.noteId = n.id; this.styleNoteElement(d, n); const l = this.createTypeLabel(n); const i = this.createNameInput(n); const s = this.createTypeSelect(n, l); const t = this.createContentArea(n); const aL = this.createAttachmentLink(n); const ctrl = this.createControls(n); const cC = this.getContrastColor(n.color); i.style.color = cC; t.style.color = cC; d.append(l, i, s, t, aL, ctrl); return d; },
+    // EN app.js, REEMPLAZA la función createNoteElement
+
+createNoteElement(n) {
+    const d = document.createElement("div");
+    d.className = "note";
+    d.dataset.noteId = n.id;
+    this.styleNoteElement(d, n);
+
+    const l = this.createTypeLabel(n);
+    const i = this.createNameInput(n);
+    // --- CAMBIO: Ya NO creamos el selector de tipo aquí ---
+    // const s = this.createTypeSelect(n, l); // <--- LÍNEA ELIMINADA
+    const t = this.createContentArea(n);
+    const aL = this.createAttachmentLink(n);
+    // --- CAMBIO: Ahora pasamos la etiqueta 'l' a createControls ---
+    const ctrl = this.createControls(n, l); 
+    
+    const cC = this.getContrastColor(n.color);
+    i.style.color = cC;
+    t.style.color = cC;
+
+    // --- CAMBIO: Ya NO añadimos el selector 's' aquí ---
+    d.append(l, i, t, aL, ctrl); // El selector 's' ha sido eliminado de esta línea
+
+    return d;
+},
     styleNoteElement(d, n) { d.style.backgroundColor = n.color; d.style.color = this.getContrastColor(n.color); d.style.paddingLeft = "0.5rem"; d.style.borderLeft = `5px solid ${n.tipo === "Entrega" ? '#d32f2f' : '#1976d2'}`; },
     createDateInput(n, t) { const i = document.createElement("input"); i.type = "date"; i.value = n.fecha || ''; i.onchange = () => this.handleDateTimeChange(n, i, t); return i; },
     createTimeInput(n, d) { const i = document.createElement("input"); i.type = "time"; i.value = n.hora || ''; i.style.width = "75px"; i.onchange = () => this.handleDateTimeChange(n, d, i); return i; },
     
-    createControls(n) {
-        const controlsContainer = document.createElement("div");
-        controlsContainer.className = "controls";
-        let dateInput, timeInput;
-        timeInput = this.createTimeInput(n, dateInput);
-        dateInput = this.createDateInput(n, timeInput);
-        controlsContainer.append(dateInput, timeInput);
-        const moreOptionsBtn = document.createElement("button");
-        moreOptionsBtn.className = "more-options-btn";
-        moreOptionsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>`;
-        moreOptionsBtn.title = "Más opciones";
-        const menu = document.createElement("div");
-        menu.className = "note-menu";
-        const editBtn = document.createElement("button");
-        editBtn.innerHTML = "📝<span>Editar Avanzado</span>";
-        editBtn.onclick = () => this.Editor.open(n.id);
-        const uploadBtn = document.createElement("button");
-        uploadBtn.innerHTML = "📎<span>Adjuntar Archivo</span>";
-        uploadBtn.onclick = () => { const fI = document.createElement('input'); fI.type = 'file'; fI.accept = ".pdf,.jpg,.jpeg,.png,.txt"; fI.onchange = (e) => this.handleFileUpload(n.id, e.target.files[0]); fI.click(); };
-        const pinBtn = this.createPinButton(n);
-        const deleteBtn = this.createDeleteButton(n);
-        const colorSelectLabel = document.createElement("label");
-        colorSelectLabel.textContent = "🎨 Color:";
-        const colorSelect = this.createColorSelect(n);
-        const colorSelectContainer = document.createElement("div");
-        colorSelectContainer.className = "menu-color-select";
-        colorSelectContainer.append(colorSelectLabel, colorSelect);
-        menu.append(editBtn, uploadBtn, pinBtn, deleteBtn, colorSelectContainer);
-        moreOptionsBtn.onclick = (e) => {
-            e.stopPropagation();
-            const parentNote = moreOptionsBtn.closest('.note');
-            document.querySelectorAll('.note-menu.show').forEach(m => {
-                if (m !== menu) {
-                    m.classList.remove('show');
-                    m.closest('.note').classList.remove('note-menu-open');
-                }
-            });
-            menu.classList.toggle('show');
-            parentNote.classList.toggle('note-menu-open');
-        };
-        controlsContainer.append(moreOptionsBtn, menu);
-        return controlsContainer;
-    },
+    // EN app.js, REEMPLAZA la función createControls
+
+createControls(n, l) { // <--- CAMBIO: Ahora recibe la etiqueta 'l' como argumento
+    const controlsContainer = document.createElement("div");
+    controlsContainer.className = "controls";
+    let dateInput, timeInput;
+    timeInput = this.createTimeInput(n, dateInput);
+    dateInput = this.createDateInput(n, timeInput);
+    controlsContainer.append(dateInput, timeInput);
+    
+    const moreOptionsBtn = document.createElement("button");
+    moreOptionsBtn.className = "more-options-btn";
+    moreOptionsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>`;
+    moreOptionsBtn.title = "Más opciones";
+    
+    const menu = document.createElement("div");
+    menu.className = "note-menu";
+    
+    const editBtn = document.createElement("button");
+    editBtn.innerHTML = "📝<span>Editar Avanzado</span>";
+    editBtn.onclick = () => this.Editor.open(n.id);
+    
+    const uploadBtn = document.createElement("button");
+    uploadBtn.innerHTML = "📎<span>Adjuntar Archivo</span>";
+    uploadBtn.onclick = () => { const fI = document.createElement('input'); fI.type = 'file'; fI.accept = ".pdf,.jpg,.jpeg,.png,.txt"; fI.onchange = (e) => this.handleFileUpload(n.id, e.target.files[0]); fI.click(); };
+    
+    const pinBtn = this.createPinButton(n);
+    const deleteBtn = this.createDeleteButton(n);
+
+    // --- NUEVO: Creamos el selector de TIPO aquí, dentro del menú ---
+    const typeSelectLabel = document.createElement("label");
+    typeSelectLabel.textContent = "🏷️ Tipo:";
+    const typeSelect = this.createTypeSelect(n, l); // Usamos la función que ya teníamos
+    const typeSelectContainer = document.createElement("div");
+    typeSelectContainer.className = "menu-type-select";
+    typeSelectContainer.append(typeSelectLabel, typeSelect);
+    // --- FIN DEL NUEVO BLOQUE ---
+
+    const colorSelectLabel = document.createElement("label");
+    colorSelectLabel.textContent = "🎨 Color:";
+    const colorSelect = this.createColorSelect(n);
+    const colorSelectContainer = document.createElement("div");
+    colorSelectContainer.className = "menu-color-select";
+    colorSelectContainer.append(colorSelectLabel, colorSelect);
+    
+    // --- CAMBIO: Añadimos el nuevo contenedor del selector de tipo al menú ---
+    menu.append(editBtn, uploadBtn, pinBtn, deleteBtn, typeSelectContainer, colorSelectContainer);
+    
+    moreOptionsBtn.onclick = (e) => {
+        e.stopPropagation();
+        const parentNote = moreOptionsBtn.closest('.note');
+        document.querySelectorAll('.note-menu.show').forEach(m => {
+            if (m !== menu) {
+                m.classList.remove('show');
+                m.closest('.note').classList.remove('note-menu-open');
+            }
+        });
+        menu.classList.toggle('show');
+        parentNote.classList.toggle('note-menu-open');
+    };
+    controlsContainer.append(moreOptionsBtn, menu);
+    return controlsContainer;
+},
 
     createAttachmentLink(n) { const c = document.createElement('div'); if (n.attachment_url && n.attachment_filename) { c.style.marginTop = "0.5rem"; const l = document.createElement('a'); l.href = n.attachment_url; l.target = "_blank"; l.textContent = `📄 ${n.attachment_filename}`; l.style.color = this.getContrastColor(n.color); l.style.textDecoration = "underline"; l.style.fontSize = "0.85rem"; c.appendChild(l); } return c; },
     createTypeLabel(n) { const l = document.createElement("div"); l.className = "note-type-label"; l.textContent = n.tipo || "Clase"; Object.assign(l.style, { fontSize: "0.7em", fontWeight: "bold", marginBottom: "0.2em" }); return l; },
