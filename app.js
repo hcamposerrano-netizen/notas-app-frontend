@@ -173,20 +173,31 @@ const NotesApp = {
         } catch (error) { console.error('❌ Error durante el borrado en lote:', error); }
     },
       
-    renderNotes() {
-        this.createColorFilterPanel();
-        const container = document.getElementById("columns-container");
-        container.innerHTML = "";
-        const grouped = this.groupNotesByColor();
-        for (let [color, group] of Object.entries(grouped)) {
-            const column = this.createColumnForColor(color, group);
+    // EN app.js, REEMPLAZA la función renderNotes existente con esta:
+
+renderNotes() {
+    this.createColorFilterPanel(); // Dibuja el panel de filtros (el CSS lo ocultará en escritorio)
+
+    const container = document.getElementById("columns-container");
+    container.innerHTML = "";
+    const grouped = this.groupNotesByColor();
+
+    for (let [color, group] of Object.entries(grouped)) {
+        const column = this.createColumnForColor(color, group);
+
+        // ⭐ ¡NUEVO! Condición para aplicar filtros SOLO en móvil ⭐
+        // Comprobamos si la pantalla coincide con nuestra media query de CSS.
+        if (window.matchMedia('(max-width: 768px)').matches) {
             if (this.activeColorFilter !== 'all' && this.activeColorFilter !== color) {
                 column.style.display = 'none';
             }
-            container.appendChild(column);
         }
-        this.updateReminders();
-    },
+        
+        container.appendChild(column);
+    }
+
+    this.updateReminders();
+},
 
     createColorFilterPanel() {
         let panel = document.getElementById('color-filter-panel');
@@ -254,7 +265,26 @@ const NotesApp = {
         colorSelectContainer.className = "menu-color-select";
         colorSelectContainer.append(colorSelectLabel, colorSelect);
         menu.append(editBtn, uploadBtn, pinBtn, deleteBtn, colorSelectContainer);
-        moreOptionsBtn.onclick = (e) => { e.stopPropagation(); document.querySelectorAll('.note-menu.show').forEach(m => { if (m !== menu) m.classList.remove('show'); }); menu.classList.toggle('show'); };
+        // EN app.js, dentro de la función createControls, localiza este bloque:
+// moreOptionsBtn.onclick = (e) => { ... };
+// Y REEMPLÁZALO por este:
+
+moreOptionsBtn.onclick = (e) => {
+    e.stopPropagation();
+    const parentNote = moreOptionsBtn.closest('.note');
+
+    // Primero, cierra cualquier otro menú que esté abierto
+    document.querySelectorAll('.note-menu.show').forEach(m => {
+        if (m !== menu) {
+            m.classList.remove('show');
+            m.closest('.note').classList.remove('note-menu-open');
+        }
+    });
+    
+    // Ahora, alterna el estado del menú y de la nota actual
+    menu.classList.toggle('show');
+    parentNote.classList.toggle('note-menu-open');
+};
         controlsContainer.append(moreOptionsBtn, menu);
         return controlsContainer;
     },

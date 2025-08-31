@@ -233,3 +233,14 @@ input[type="file"] { display: none; }
 
 /* --- 12. OCULTAR PANEL DE FILTROS EN ESCRITORIO --- */
 #color-filter-panel { display: none; }
+/* EN style.css, al final de la sección 9 (MENÚ DE NOTA, DIMMER Y ANIMACIONES) */
+
+/* Hacemos que .note sea un contexto de apilamiento */
+.note {
+    position: relative; /* ¡CRUCIAL para que z-index funcione! */
+}
+
+/* Nueva clase para la nota con el menú abierto */
+.note.note-menu-open {
+    z-index: 15; /* Un valor alto para traerla al frente */
+}

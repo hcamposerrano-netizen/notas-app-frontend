@@ -1,5 +1,5 @@
 // ==============================================================
-// 🎨 INTERACCIONES DE LA INTERFAZ DE USUARIO
+// 🎨 INTERACCIONES DE LA INTERFAZ DE USUARIO (VERSIÓN UNIFICADA)
 // ==============================================================
 
 (function() {
@@ -40,39 +40,39 @@
     }
     updateIcon();
   }
-})();
 
+  // --- LÓGICA PARA EL PANEL ATENUADO (DIMMER) ---
+  let dimmer = document.getElementById('panel-dimmer');
+  if (!dimmer) {
+      dimmer = document.createElement('div');
+      dimmer.id = 'panel-dimmer';
+      body.appendChild(dimmer);
+  }
 
-// --- LÓGICA PARA EL PANEL ATENUADO (DIMMER) Y CIERRE DE MENÚS ---
-(function() {
-    const body = document.body;
-    const panel = document.getElementById('control-panel');
-    const toggleBtn = document.querySelector('.panel-toggle');
-
-    let dimmer = document.getElementById('panel-dimmer');
-    if (!dimmer) {
-        dimmer = document.createElement('div');
-        dimmer.id = 'panel-dimmer';
-        body.appendChild(dimmer);
-    }
-
-    const toggleDimmer = () => {
+  const toggleDimmer = () => {
+      if(panel) { // Solo ejecuta si el panel existe
         dimmer.classList.toggle('show', panel.classList.contains('show'));
-    };
-    
-    if (toggleBtn && panel) {
-        // Corregimos el listener para que se active después de que la clase 'show' cambie
-        toggleBtn.addEventListener('click', () => setTimeout(toggleDimmer, 0));
-        dimmer.addEventListener('click', () => {
-            panel.classList.remove('show');
-            toggleDimmer();
-        });
-    }
+      }
+  };
+  
+  if (toggleBtn && panel) {
+      toggleBtn.addEventListener('click', () => setTimeout(toggleDimmer, 0));
+      dimmer.addEventListener('click', () => {
+          panel.classList.remove('show');
+          toggleDimmer();
+      });
+  }
 
-    // Cierra menús de notas al hacer click en cualquier otro lugar
-    window.addEventListener('click', () => {
-        document.querySelectorAll('.note-menu.show').forEach(menu => {
-            menu.classList.remove('show');
-        });
-    });
-})();
+  // --- CIERRE GLOBAL DE MENÚS DE NOTAS ---
+  window.addEventListener('click', () => {
+      document.querySelectorAll('.note-menu.show').forEach(menu => {
+          menu.classList.remove('show');
+          // También quitamos la clase activa de la nota padre
+          const parentNote = menu.closest('.note');
+          if (parentNote) {
+            parentNote.classList.remove('note-menu-open');
+          }
+      });
+  });
+
+})(); // Fin del bloque de función autoejecutable
