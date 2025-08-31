@@ -175,8 +175,10 @@ const NotesApp = {
       
     // EN app.js, REEMPLAZA la función renderNotes existente con esta:
 
+// EN app.js, REEMPLAZA la función renderNotes
+
 renderNotes() {
-    this.createColorFilterPanel(); // Dibuja el panel de filtros (el CSS lo ocultará en escritorio)
+    this.createColorFilterPanel(); // Crea el panel (solo si es móvil)
 
     const container = document.getElementById("columns-container");
     container.innerHTML = "";
@@ -184,13 +186,11 @@ renderNotes() {
 
     for (let [color, group] of Object.entries(grouped)) {
         const column = this.createColumnForColor(color, group);
-
-        // ⭐ ¡NUEVO! Condición para aplicar filtros SOLO en móvil ⭐
-        // Comprobamos si la pantalla coincide con nuestra media query de CSS.
-        if (window.matchMedia('(max-width: 768px)').matches) {
-            if (this.activeColorFilter !== 'all' && this.activeColorFilter !== color) {
-                column.style.display = 'none';
-            }
+        
+        // La visibilidad de la columna ahora se controla 100% con CSS en el modo móvil,
+        // y en escritorio siempre son visibles.
+        if (this.activeColorFilter !== 'all' && this.activeColorFilter !== color) {
+            column.classList.add('column-hidden-by-filter');
         }
         
         container.appendChild(column);
@@ -198,35 +198,63 @@ renderNotes() {
 
     this.updateReminders();
 },
+    // EN app.js, REEMPLAZA la función createColorFilterPanel
 
-    createColorFilterPanel() {
-        let panel = document.getElementById('color-filter-panel');
-        if (!panel) {
-            panel = document.createElement('div');
-            panel.id = 'color-filter-panel';
-            const mainContainer = document.getElementById('main-container');
-            mainContainer.prepend(panel);
+createColorFilterPanel() {
+    let panel = document.getElementById('color-filter-panel');
+    
+    // ⭐ ¡LÓGICA CLAVE! Si no estamos en modo móvil, nos aseguramos de que el panel no exista y salimos. ⭐
+    if (!window.matchMedia('(max-width: 768px)').matches) {
+        if (panel) {
+            panel.innerHTML = '';
+            panel.style.display = 'none';
         }
-        panel.innerHTML = '';
-        const usedColors = [...new Set(Array.from(this.notes.values()).map(n => n.color))];
-        if (usedColors.length <= 1) { panel.style.display = 'none'; return; }
-        
-        panel.style.display = 'flex';
-        const allButton = document.createElement('button');
-        allButton.textContent = 'Todas';
-        allButton.className = this.activeColorFilter === 'all' ? 'active' : '';
-        allButton.onclick = () => { this.activeColorFilter = 'all'; this.renderNotes(); };
-        panel.appendChild(allButton);
+        return;
+    }
 
-        usedColors.forEach(color => {
-            const colorButton = document.createElement('button');
-            colorButton.style.backgroundColor = color;
-            colorButton.className = this.activeColorFilter === color ? 'active' : '';
-            colorButton.title = this.COLORS.find(c => c.value === color)?.name || color;
-            colorButton.onclick = () => { this.activeColorFilter = color; this.renderNotes(); };
-            panel.appendChild(colorButton);
-        });
-    },
+    // Si estamos en móvil, creamos el panel si no existe
+    if (!panel) {
+        panel = document.createElement('div');
+        panel.id = 'color-filter-panel';
+        const mainContainer = document.getElementById('main-container');
+        mainContainer.prepend(panel);
+    }
+
+    panel.innerHTML = '';
+    const usedColors = [...new Set(Array.from(this.notes.values()).map(n => n.color))];
+    
+    // Si solo hay un color (o ninguno), no tiene sentido mostrar el panel de filtros
+    if (usedColors.length <= 1) {
+        panel.style.display = 'none';
+        this.activeColorFilter = 'all'; // Reseteamos por si acaso
+        return;
+    }
+    
+    panel.style.display = 'flex'; // Nos aseguramos de que sea visible
+
+    // Botón "Ver Todas"
+    const allButton = document.createElement('button');
+    allButton.textContent = 'Todas';
+    allButton.className = this.activeColorFilter === 'all' ? 'active' : '';
+    allButton.onclick = () => {
+        this.activeColorFilter = 'all';
+        this.renderNotes(); // Volvemos a renderizar para aplicar el filtro
+    };
+    panel.appendChild(allButton);
+
+    // Botones de colores
+    usedColors.forEach(color => {
+        const colorButton = document.createElement('button');
+        colorButton.style.backgroundColor = color;
+        colorButton.className = this.activeColorFilter === color ? 'active' : '';
+        colorButton.title = this.COLORS.find(c => c.value === color)?.name || color;
+        colorButton.onclick = () => {
+            this.activeColorFilter = color;
+            this.renderNotes(); // Volvemos a renderizar para aplicar el filtro
+        };
+        panel.appendChild(colorButton);
+    });
+},
 
     sortNotes(a, b) { if (b.fijada !== a.fijada) return b.fijada - a.fijada; const dA = a.fecha_hora ? new Date(a.fecha_hora) : null; const dB = b.fecha_hora ? new Date(b.fecha_hora) : null; if (!dA && dB) return 1; if (dA && !dB) return -1; return dA - dB; },
     groupNotesByColor() { const g = {}; for (let n of this.notes.values()) { (g[n.color] = g[n.color] || []).push(n); } for (let group of Object.values(g)) { group.sort(this.sortNotes); } return g; },

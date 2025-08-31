@@ -244,3 +244,8 @@ input[type="file"] { display: none; }
 .note.note-menu-open {
     z-index: 15; /* Un valor alto para traerla al frente */
 }
+/* EN style.css, dentro de @media (max-width: 768px) */
+
+.column.column-hidden-by-filter {
+    display: none;
+}
