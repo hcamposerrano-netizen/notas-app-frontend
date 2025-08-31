@@ -38,123 +38,7 @@ body.theme-dark {
   --color-calendar-section-border: #bcaaa4;
 }
 
-/* --- Tema 3: Otoño Acogedor 🍂 --- */
-body.theme-autumn {
-  --color-background: #f4f1e9;
-  --color-text-primary: #5c4033;
-  --color-text-secondary: #8a5a44;
-  --color-surface: #ffffff;
-  --color-primary-accent: #c06c3a;
-  --color-primary-accent-hover: #a65c32;
-  --color-subtle-border: #dcd3b9;
-  --color-scrollbar-track: #e2d9c2;
-  --color-scrollbar-thumb: #8a5a44;
-  --shadow-color: rgba(92, 64, 51, 0.15);
-  --color-calendar-section-bg: #fdfaf2;
-  --color-calendar-section-border: #c06c3a;
-}
-
-/* --- Tema 4: Océano Profundo 🌊 --- */
-body.theme-ocean {
-  --color-background: #1a2a3a;
-  --color-text-primary: #e5e9f0;
-  --color-text-secondary: #a2b1c3;
-  --color-surface: #2a4a6a;
-  --color-primary-accent: #88c0d0;
-  --color-primary-accent-hover: #97d1e1;
-  --color-subtle-border: #3b5978;
-  --color-scrollbar-track: #233a50;
-  --color-scrollbar-thumb: #4c566a;
-  --shadow-color: rgba(0, 0, 0, 0.3);
-  --color-calendar-section-bg: #2f5072;
-  --color-calendar-section-border: #88c0d0;
-}
-
-/* ================================
-   ✨ NUEVOS TEMAS AÑADIDOS
-   ================================ */
-
-/* --- Tema 5: Atardecer Costero --- */
-body.theme-coastal-sunset {
-  --color-background: #f0f8ff;
-  --color-text-primary: #3988A4;
-  --color-text-secondary: #67C2D4;
-  --color-surface: #ffffff;
-  --color-primary-accent: #D0944D;
-  --color-primary-accent-hover: #CB625F;
-  --color-subtle-border: #e0f0ff;
-  --color-scrollbar-track: #bce0f5;
-  --color-scrollbar-thumb: #67C2D4;
-  --shadow-color: rgba(57, 136, 164, 0.1);
-  --color-calendar-section-bg: #fafdff;
-  --color-calendar-section-border: #D0944D;
-}
-
-/* --- Tema 6: Rosa Vintage --- */
-body.theme-vintage-rose {
-  --color-background: #fdf6f4;
-  --color-text-primary: #53331F;
-  --color-text-secondary: #866C69;
-  --color-surface: #ffffff;
-  --color-primary-accent: #CD8C8C;
-  --color-primary-accent-hover: #c97c7c;
-  --color-subtle-border: #D4B8B1;
-  --color-scrollbar-track: #e6dcd9;
-  --color-scrollbar-thumb: #866C69;
-  --shadow-color: rgba(83, 51, 31, 0.1);
-  --color-calendar-section-bg: #fffafa;
-  --color-calendar-section-border: #CD8C8C;
-}
-
-/* --- Tema 7: Pradera --- */
-body.theme-meadow {
-  --color-background: #f4f9f4;
-  --color-text-primary: #2963A2;
-  --color-text-secondary: #4CAABC;
-  --color-surface: #ffffff;
-  --color-primary-accent: #9FA65A;
-  --color-primary-accent-hover: #8a914c;
-  --color-subtle-border: #e8f0e8;
-  --color-scrollbar-track: #dbe6db;
-  --color-scrollbar-thumb: #72C2C9;
-  --shadow-color: rgba(41, 99, 162, 0.1);
-  --color-calendar-section-bg: #fbfcfb;
-  --color-calendar-section-border: #9FA65A;
-}
-
-/* --- Tema 8: Ritmo Retro (Oscuro) --- */
-body.theme-retro-groove {
-  --color-background: #144058;
-  --color-text-primary: #f0f0f0;
-  --color-text-secondary: #a8c0ce;
-  --color-surface: #1a4c68;
-  --color-primary-accent: #E58D2E;
-  --color-primary-accent-hover: #DD671E;
-  --color-subtle-border: #4D181C;
-  --color-scrollbar-track: #0f3041;
-  --color-scrollbar-thumb: #4D181C;
-  --shadow-color: rgba(0, 0, 0, 0.5);
-  --color-calendar-section-bg: #1f5878;
-  --color-calendar-section-border: #E58D2E;
-}
-
-/* --- Tema 9: Pop Pastel --- */
-body.theme-pastel-pop {
-  --color-background: #f0fcfb;
-  --color-text-primary: #573C33;
-  --color-text-secondary: #a08c86;
-  --color-surface: #ffffff;
-  --color-primary-accent: #D2385A;
-  --color-primary-accent-hover: #c13253;
-  --color-subtle-border: #DE9DC2;
-  --color-scrollbar-track: #f0e8ed;
-  --color-scrollbar-thumb: #DE9DC2;
-  --shadow-color: rgba(87, 60, 51, 0.1);
-  --color-calendar-section-bg: #fdfafe;
-  --color-calendar-section-border: #D2385A;
-}
-
-/* --- Tema 10: Terracota (Oscuro) --- */
+/* --- Tema 3: Terracota (Oscuro) --- */
 body.theme-terracotta {
   --color-background: #2a2b2b;
   --color-text-primary: #f1f1f1;
@@ -170,39 +54,7 @@ body.theme-terracotta {
   --color-calendar-section-border: #E36858;
 }
 
-/* --- Tema 11: Sorbete --- */
-body.theme-sorbet {
-  --color-background: #fff8f9;
-  --color-text-primary: #6b4c42;
-  --color-text-secondary: #a68f87;
-  --color-surface: #ffffff;
-  --color-primary-accent: #E3856B;
-  --color-primary-accent-hover: #EEC95C;
-  --color-subtle-border: #EECCD3;
-  --color-scrollbar-track: #e3d9d3;
-  --color-scrollbar-thumb: #80C4B7;
-  --shadow-color: rgba(227, 133, 107, 0.1);
-  --color-calendar-section-bg: #fffcf8;
-  --color-calendar-section-border: #E3856B;
-}
-
-/* --- Tema 12: Caramelo y Azul --- */
-body.theme-caramel-blue {
-  --color-background: #fbfaf5;
-  --color-text-primary: #6C3622;
-  --color-text-secondary: #966f5e;
-  --color-surface: #ffffff;
-  --color-primary-accent: #6FA1BB;
-  --color-primary-accent-hover: #CF9032;
-  --color-subtle-border: #e6e0d4;
-  --color-scrollbar-track: #e6dcca;
-  --color-scrollbar-thumb: #CD7E2A;
-  --shadow-color: rgba(108, 54, 34, 0.1);
-  --color-calendar-section-bg: #fdfcf9;
-  --color-calendar-section-border: #6FA1BB;
-}
-
-/* --- Tema 13: Bosque (Oscuro) --- */
+/* --- Tema 4: Bosque (Oscuro) --- */
 body.theme-forest-floor {
   --color-background: #2e2c2b;
   --color-text-primary: #f0e9e5;
@@ -218,6 +70,73 @@ body.theme-forest-floor {
   --color-calendar-section-border: #507B6A;
 }
 
+/* ================================
+   ✨ TEMAS NUEVOS Y VIBRANTES
+   ================================ */
+
+/* --- Tema 5: Noche Neón (Oscuro) --- */
+body.theme-neon-night {
+  --color-background: #020202;
+  --color-text-primary: #e9e8ff;
+  --color-text-secondary: #a3a1f2;
+  --color-surface: #10102c;
+  --color-primary-accent: #F6C845;
+  --color-primary-accent-hover: #A254A1;
+  --color-subtle-border: #5351A2;
+  --color-scrollbar-track: #1c1c3d;
+  --color-scrollbar-thumb: #A254A1;
+  --shadow-color: rgba(0, 0, 0, 0.6);
+  --color-calendar-section-bg: #151533;
+  --color-calendar-section-border: #F6C845;
+}
+
+/* --- Tema 6: Brisa de Menta (Claro) --- */
+body.theme-mint-breeze {
+  --color-background: #ECF8BA;
+  --color-text-primary: #1f4f5f;
+  --color-text-secondary: #4a7c8c;
+  --color-surface: #ffffff;
+  --color-primary-accent: #59C4EB;
+  --color-primary-accent-hover: #5ADFDF;
+  --color-subtle-border: #c4f0d9;
+  --color-scrollbar-track: #d8f5cb;
+  --color-scrollbar-thumb: #77EFBD;
+  --shadow-color: rgba(89, 196, 235, 0.15);
+  --color-calendar-section-bg: #f8fff0;
+  --color-calendar-section-border: #59C4EB;
+}
+
+/* --- Tema 7: Anochecer Cósmico (Oscuro) --- */
+body.theme-cosmic-dusk {
+  --color-background: #22235F;
+  --color-text-primary: #A8DACD;
+  --color-text-secondary: #89b3a8;
+  --color-surface: #2d307a;
+  --color-primary-accent: #EB68A0;
+  --color-primary-accent-hover: #de508e;
+  --color-subtle-border: #7A4D9F;
+  --color-scrollbar-track: #1e1f50;
+  --color-scrollbar-thumb: #7A4D9F;
+  --shadow-color: rgba(0, 0, 0, 0.5);
+  --color-calendar-section-bg: #282a6f;
+  --color-calendar-section-border: #EB68A0;
+}
+
+/* --- Tema 8: Cañón del Desierto (Oscuro) --- */
+body.theme-desert-canyon {
+  --color-background: #2d2623;
+  --color-text-primary: #f5e9e2;
+  --color-text-secondary: #b8a69e;
+  --color-surface: #3A6D80;
+  --color-primary-accent: #F3CD53;
+  --color-primary-accent-hover: #D56729;
+  --color-subtle-border: #9D402D;
+  --color-scrollbar-track: #1f1a18;
+  --color-scrollbar-thumb: #D56729;
+  --shadow-color: rgba(0, 0, 0, 0.5);
+  --color-calendar-section-bg: #417a8c;
+  --color-calendar-section-border: #F3CD53;
+}
 
 /* --- 2. ESTILOS GENERALES Y DE ESCRITORIO --- */
 body {

@@ -12,19 +12,14 @@
   if (themeToggleBtn) {
     // ✅ ARRAY ACTUALIZADO CON TODOS LOS TEMAS
     const themes = [
-        'theme-light', 
+         'theme-light', 
         'theme-dark', 
-        'theme-autumn', 
-        'theme-ocean',
-        'theme-coastal-sunset',
-        'theme-vintage-rose',
-        'theme-meadow',
-        'theme-retro-groove',
-        'theme-pastel-pop',
         'theme-terracotta',
-        'theme-sorbet',
-        'theme-caramel-blue',
-        'theme-forest-floor'
+        'theme-forest-floor',
+        'theme-neon-night',
+        'theme-mint-breeze',
+        'theme-cosmic-dusk',
+        'theme-desert-canyon'
     ];
     
     const applyTheme = (theme) => {
