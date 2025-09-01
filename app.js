@@ -94,6 +94,7 @@ const NotesApp = {
     },
 
     async toggleArchiveNote(note) {
+        if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
         const noteElement = document.querySelector(`.note[data-note-id='${note.id}']`);
         noteElement.classList.add('note-leaving');
 
@@ -114,6 +115,7 @@ const NotesApp = {
 
     // ✨ NUEVO: Lógica para activar/desactivar notificaciones de una nota
     async toggleNoteNotifications(note) {
+        if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
         const newState = !note.notificaciones_activas;
 
         if (newState && Notification.permission !== 'granted') {
@@ -231,7 +233,19 @@ const NotesApp = {
     },
 
     _closeNewNoteModal() { document.getElementById('new-note-overlay').classList.add('overlay-hidden'); },
-    async handleDateTimeChange(note, dateInput, timeInput) { let new_fecha_hora = null; if (dateInput.value) { new_fecha_hora = `${dateInput.value}T${timeInput.value || '00:00'}:00.000Z`; } if (note.fecha_hora !== new_fecha_hora) { note.fecha_hora = new_fecha_hora; await this.apiUpdate(note); } },
+    async handleDateTimeChange(note, dateInput, timeInput) {
+    // ▼▼ AÑADE ESTA LÍNEA AQUÍ ▼▼
+    if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
+    // ▲▲ FIN DE LA LÍNEA A AÑADIR ▲▲
+    let new_fecha_hora = null;
+    if (dateInput.value) {
+        new_fecha_hora = `${dateInput.value}T${timeInput.value || '00:00'}:00.000Z`;
+    }
+    if (note.fecha_hora !== new_fecha_hora) {
+        note.fecha_hora = new_fecha_hora;
+        await this.apiUpdate(note);
+    }
+},
     async deletePastNotes() { const notesToDeleteIds = Array.from(this.notes.values()).filter(n => n.fecha_hora && n.fecha_hora < new Date().toISOString() && n.tipo === 'Entrega').map(n => n.id); if (notesToDeleteIds.length === 0) return alert("👍 No hay entregas antiguas para eliminar."); if (!confirm(`🧹 ¿Seguro que quieres borrar ${notesToDeleteIds.length} entrega(s) pasada(s)?`)) return; try { await Promise.all(notesToDeleteIds.map(id => this.fetchWithAuth(`${API_BASE_URL}/api/notes/${id}`, { method: 'DELETE' }))); await this.refreshAllData(); alert(`🧹 ${notesToDeleteIds.length} entregas antiguas fueron eliminadas.`); } catch (error) { console.error('❌ Error durante el borrado en lote:', error); } },
 
     renderNotes() {
@@ -492,9 +506,60 @@ createControls(n, l) {
     createTypeLabel(n) { const l = document.createElement("div"); l.className = "note-type-label"; l.textContent = n.tipo || "Clase"; Object.assign(l.style, { fontSize: "0.7em", fontWeight: "bold", marginBottom: "0.2em" }); return l; },
     createNameInput(n) { const i = document.createElement("input"); i.type = "text"; i.placeholder = "Título..."; i.value = n.nombre || ""; i.oninput = () => { n.nombre = i.value; this.debouncedSave(n.id); }; return i; },
     createContentArea(n) { const t = document.createElement("textarea"); t.value = n.contenido; t.oninput = () => { n.contenido = t.value; this.debouncedSave(n.id); }; return t; },
-    createTypeSelect(n, l) { const s = document.createElement("select"); ["Clase", "Entrega"].forEach(t => { const o = document.createElement("option"); o.value = t; o.textContent = t; if (t === n.tipo) o.selected = true; s.appendChild(o); }); s.addEventListener("change", () => { n.tipo = s.value; l.textContent = s.value; this.styleNoteElement(s.closest('.note'), n); this.apiUpdate(n); }); return s; },
-    createColorSelect(n) { const s = document.createElement("select"); this.COLORS.forEach(c => { const o = document.createElement("option"); o.value = c.value; o.textContent = c.name; if (c.value === n.color) o.selected = true; s.appendChild(o); }); s.onchange = () => { n.color = s.value; this.apiUpdate(n); }; return s; },
-    createPinButton(n) { const b = document.createElement("button"); const u = () => { b.innerHTML = n.fijada ? "📌<span>Desfijar Nota</span>" : "📍<span>Fijar Nota</span>"; }; b.onclick = (e) => { e.stopPropagation(); n.fijada = !n.fijada; u(); this.apiUpdate(n); }; u(); return b; },
+    createTypeSelect(n, l) {
+    const s = document.createElement("select");
+    ["Clase", "Entrega"].forEach(t => {
+        const o = document.createElement("option");
+        o.value = t;
+        o.textContent = t;
+        if (t === n.tipo) o.selected = true;
+        s.appendChild(o);
+    });
+    s.addEventListener("change", () => {
+        // ▼▼ AÑADE ESTA LÍNEA AQUÍ ▼▼
+        if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
+        // ▲▲ FIN DE LA LÍNEA A AÑADIR ▲▲
+        n.tipo = s.value;
+        l.textContent = s.value;
+        this.styleNoteElement(s.closest('.note'), n);
+        this.apiUpdate(n);
+    });
+    return s;
+},
+     createColorSelect(n) {
+    const s = document.createElement("select");
+    this.COLORS.forEach(c => {
+        const o = document.createElement("option");
+        o.value = c.value;
+        o.textContent = c.name;
+        if (c.value === n.color) o.selected = true;
+        s.appendChild(o);
+    });
+    s.onchange = () => {
+        // ▼▼ AÑADE ESTA LÍNEA AQUÍ ▼▼
+        if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
+        // ▲▲ FIN DE LA LÍNEA A AÑADIR ▲▲
+        n.color = s.value;
+        this.apiUpdate(n);
+    };
+    return s;
+},
+    createPinButton(n) {
+    const b = document.createElement("button");
+    const u = () => {
+        b.innerHTML = n.fijada ? "📌<span>Desfijar Nota</span>" : "📍<span>Fijar Nota</span>";
+    };
+    b.onclick = (e) => {
+        // ✅ CORRECCIÓN: Se cancela el guardado automático pendiente.
+        if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
+        e.stopPropagation();
+        n.fijada = !n.fijada;
+        u();
+        this.apiUpdate(n);
+    };
+    u();
+    return b;
+},
     createDeleteButton(n) { const b = document.createElement("button"); b.innerHTML = "🗑️<span>Borrar Nota</span>"; b.onclick = (e) => { e.stopPropagation(); if (confirm("¿Seguro que quieres borrar esta nota?")) { const el = b.closest('.note'); el.classList.add('note-leaving'); setTimeout(async () => { await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${n.id}`, { method: 'DELETE' }); this.notes.delete(n.id); this.renderNotes(); }, 300); } }; return b; },
     updateReminders() { const rL = document.getElementById("reminder-list"); const u = [...this.notes.values()].filter(n => n.fecha_hora && new Date(n.fecha_hora) >= new Date() && n.tipo === "Entrega").sort(this.sortNotes).slice(0, 5); rL.innerHTML = ""; u.forEach(n => { const li = document.createElement("li"); li.textContent = `${n.fecha}${n.hora ? ' ' + n.hora : ''} - ${n.nombre || "(sin título)"}`; rL.appendChild(li); }); this.renderLinks(); },
     renderLinks() { const l = document.getElementById("link-list"); if(!l) return; l.innerHTML = ""; this.links.forEach((u, i) => { const li = document.createElement("li"); const a = document.createElement("a"); a.href = u; a.target = "_blank"; a.textContent = u; const d = document.createElement("button"); d.textContent = "🗑️"; d.onclick = () => { this.links.splice(i, 1); this.renderLinks(); }; li.append(a, d); l.appendChild(li); }); },
