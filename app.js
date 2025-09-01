@@ -152,12 +152,20 @@ const NotesApp = {
         }
     },
     
-    // ✨ NUEVO: Lógica para enviar mensajes al Service Worker
+    // ✅ PEGA ESTA VERSIÓN CORREGIDA EN app.js
     _postMessageToSW(message) {
-        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage(message);
+        // Usamos navigator.serviceWorker.ready, que es una promesa que se resuelve
+        // cuando un Service Worker está activo y controlando la página.
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(registration => {
+                // Una vez que está listo, le enviamos el mensaje.
+                registration.active.postMessage(message);
+                console.log("Mensaje enviado al Service Worker:", message.type);
+            }).catch(err => {
+                console.error("Error al comunicar con el Service Worker:", err);
+            });
         } else {
-            console.error("No se pudo comunicar con el Service Worker.");
+            console.error("Service Worker no es soportado en este navegador.");
         }
     },
 
