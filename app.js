@@ -115,7 +115,53 @@ const NotesApp = {
     async handleFileUpload(noteId, file) { if (!file || file.size > 5 * 1024 * 1024) { alert(file ? "❌ El archivo es demasiado grande (máx 5MB)." : "No se seleccionó archivo."); return; } const formData = new FormData(); formData.append('file', file); try { const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${noteId}/upload`, { method: 'POST', body: formData }); if (!response || !response.ok) throw new Error('Error en la respuesta del servidor.'); alert('✅ Archivo subido con éxito!'); await this.refreshAllData(); } catch (error) { console.error('❌ Error al subir el archivo:', error); alert('❌ Hubo un problema al subir el archivo.'); } },
     createNote() { const overlay = document.getElementById('new-note-overlay'); document.getElementById('new-note-form').reset(); overlay.classList.remove('overlay-hidden'); document.getElementById('new-note-nombre').focus(); },
     _populateColorSelector() { const select = document.getElementById('new-note-color'); select.innerHTML = ''; this.COLORS.forEach(color => { const option = document.createElement('option'); option.value = color.value; option.textContent = color.name; if (color.value === "#f1e363ff") option.selected = true; select.appendChild(option); }); },
-    async _handleCreateNoteSubmit(event) { event.preventDefault(); const noteData = { nombre: document.getElementById('new-note-nombre').value || "Nueva Nota", contenido: document.getElementById('new-note-contenido').value, tipo: document.getElementById('new-note-tipo').value, color: document.getElementById('new-note-color').value, fecha_hora: null, fijada: false }; try { const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(noteData) }); if (!response || !response.ok) throw new Error('Error del servidor al crear la nota.'); const newNote = await response.json(); this.notes.set(newNote.id, newNote); this.renderNotes(); const newNoteElement = document.querySelector(`.note[data-note-id='${newNote.id}']`); if (newNoteElement) { newNoteElement.classList.add('note-entering'); } this._closeNewNoteModal(); } catch (error) { console.error('❌ Error al crear nota desde el modal:', error); alert('Hubo un problema al guardar la nota.'); } },
+    async _handleCreateNoteSubmit(event) {
+    event.preventDefault();
+
+    // 1. Obtenemos los valores de los nuevos campos de fecha y hora
+    const fecha = document.getElementById('new-note-fecha').value;
+    const hora = document.getElementById('new-note-hora').value;
+
+    // 2. Combinamos fecha y hora en el formato correcto (ISO 8601)
+    let fecha_hora = null;
+    if (fecha) {
+        // Si hay fecha pero no hora, se usa el inicio del día (00:00)
+        fecha_hora = `${fecha}T${hora || '00:00'}:00.000Z`;
+    }
+
+    // 3. Creamos el objeto de la nota con el nuevo valor de fecha_hora
+    const noteData = {
+        nombre: document.getElementById('new-note-nombre').value || "Nueva Nota",
+        contenido: document.getElementById('new-note-contenido').value,
+        tipo: document.getElementById('new-note-tipo').value,
+        color: document.getElementById('new-note-color').value,
+        fecha_hora: fecha_hora, // Usamos la fecha y hora combinadas
+        fijada: false
+    };
+
+    try {
+        const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(noteData)
+        });
+        if (!response || !response.ok) throw new Error('Error del servidor al crear la nota.');
+        
+        const newNote = await response.json();
+        this.notes.set(newNote.id, newNote);
+        this.renderNotes();
+        
+        const newNoteElement = document.querySelector(`.note[data-note-id='${newNote.id}']`);
+        if (newNoteElement) {
+            newNoteElement.classList.add('note-entering');
+        }
+        
+        this._closeNewNoteModal();
+    } catch (error) {
+        console.error('❌ Error al crear nota desde el modal:', error);
+        alert('Hubo un problema al guardar la nota.');
+    }
+},
     _closeNewNoteModal() { document.getElementById('new-note-overlay').classList.add('overlay-hidden'); },
     async handleDateTimeChange(note, dateInput, timeInput) { let new_fecha_hora = null; if (dateInput.value) { new_fecha_hora = `${dateInput.value}T${timeInput.value || '00:00'}:00.000Z`; } if (note.fecha_hora !== new_fecha_hora) { note.fecha_hora = new_fecha_hora; await this.apiUpdate(note); } },
     async deletePastNotes() { const notesToDeleteIds = Array.from(this.notes.values()).filter(n => n.fecha_hora && n.fecha_hora < new Date().toISOString() && n.tipo === 'Entrega').map(n => n.id); if (notesToDeleteIds.length === 0) return alert("👍 No hay entregas antiguas para eliminar."); if (!confirm(`🧹 ¿Seguro que quieres borrar ${notesToDeleteIds.length} entrega(s) pasada(s)?`)) return; try { await Promise.all(notesToDeleteIds.map(id => this.fetchWithAuth(`${API_BASE_URL}/api/notes/${id}`, { method: 'DELETE' }))); await this.refreshAllData(); alert(`🧹 ${notesToDeleteIds.length} entregas antiguas fueron eliminadas.`); } catch (error) { console.error('❌ Error durante el borrado en lote:', error); } },
