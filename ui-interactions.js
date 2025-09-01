@@ -10,25 +10,21 @@
   // --- LÓGICA DE TEMAS MÚLTIPLES ---
   const themeToggleBtn = document.getElementById('theme-toggle');
   if (themeToggleBtn) {
-    // ✅ ARRAY ACTUALIZADO CON TODOS LOS TEMAS
     const themes = [
-         'theme-light', 
+        'theme-light', 
         'theme-dark', 
         'theme-terracotta',
         'theme-forest-floor',
         'theme-neon-night',
         'theme-mint-breeze',
+        'theme-cosmic-dusk',
         'theme-desert-canyon'
     ];
     
     const applyTheme = (theme) => {
-      // 1. Limpiar temas antiguos
       body.classList.remove(...themes);
-      // 2. Añadir el nuevo tema
       body.classList.add(theme);
-      // 3. Guardar la elección
       localStorage.setItem('theme', theme);
-      // 4. Actualizar el ícono
       themeToggleBtn.textContent = '🎨'; 
     };
 
@@ -40,13 +36,9 @@
       applyTheme(nextTheme);
     };
 
-    // Asignar el evento al botón
     themeToggleBtn.addEventListener('click', cycleTheme);
-
-    // Cargar el tema guardado al iniciar la app
     const savedTheme = localStorage.getItem('theme');
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
     if (savedTheme && themes.includes(savedTheme)) {
         applyTheme(savedTheme);
     } else if (systemPrefersDark) {
@@ -56,15 +48,20 @@
     }
   }
 
-  // --- LÓGICA DEL MENÚ DESLIZABLE ---
+  // --- ✅ LÓGICA DEL PANEL LATERAL MEJORADA ---
+  // Ahora se controla el estado añadiendo/quitando una clase al body
+  function togglePanel() {
+      body.classList.toggle('panel-open');
+  }
+
   if (toggleBtn && panel) {
     toggleBtn.addEventListener('click', (event) => {
       event.stopPropagation();
-      panel.classList.toggle('show');
+      togglePanel();
     });
   }
 
-  // --- LÓGICA PARA EL PANEL ATENUADO (DIMMER) ---
+  // --- LÓGICA DEL ATENUADOR (DIMMER) ---
   let dimmer = document.getElementById('panel-dimmer');
   if (!dimmer) {
       dimmer = document.createElement('div');
@@ -72,18 +69,8 @@
       body.appendChild(dimmer);
   }
 
-  const toggleDimmer = () => {
-      if (panel) {
-        dimmer.classList.toggle('show', panel.classList.contains('show'));
-      }
-  };
-  
   if (toggleBtn && panel) {
-      toggleBtn.addEventListener('click', () => setTimeout(toggleDimmer, 0));
-      dimmer.addEventListener('click', () => {
-          panel.classList.remove('show');
-          toggleDimmer();
-      });
+      dimmer.addEventListener('click', togglePanel); // El dimmer ahora también cierra el panel
   }
 
   // --- CIERRE GLOBAL DE MENÚS DE NOTAS ---
