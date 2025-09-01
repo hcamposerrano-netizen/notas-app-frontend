@@ -1,5 +1,5 @@
 // ==============================================================
-// 📱 APLICACIÓN DE NOTAS - VERSIÓN 9.2 (CON ARCHIVADO CORREGIDO)
+// 📱 APLICACIÓN DE NOTAS - VERSIÓN 9.3 (CON NOTIFICACIONES INTEGRADAS)
 // ==============================================================
 
 // --- CONFIGURACIÓN DE SUPABASE ---
@@ -70,7 +70,7 @@ const NotesApp = {
         const headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
         return fetch(url, { ...options, headers });
     },
-    
+
     async refreshAllData() {
         const endpoint = this.isViewingArchived ? '/api/notes/archived' : '/api/notes';
         try {
@@ -86,13 +86,13 @@ const NotesApp = {
     async apiUpdate(note) {
         const { fecha, hora, ...noteToSend } = note;
         try {
-            await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${note.id}`, { 
-                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(noteToSend) 
+            await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${note.id}`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(noteToSend)
             });
             await this.refreshAllData();
         } catch (error) { console.error(`❌ Error al actualizar nota ${note.id}:`, error); }
     },
-    
+
     async toggleArchiveNote(note) {
         const noteElement = document.querySelector(`.note[data-note-id='${note.id}']`);
         noteElement.classList.add('note-leaving');
@@ -112,61 +112,127 @@ const NotesApp = {
         }, 300);
     },
 
+    // ✨ NUEVO: Lógica para activar/desactivar notificaciones de una nota
+    async toggleNoteNotifications(note) {
+        const newState = !note.notificaciones_activas;
+
+        if (newState && Notification.permission !== 'granted') {
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                alert('No se pueden activar las notificaciones sin tu permiso.');
+                return;
+            }
+        }
+
+        try {
+            const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${note.id}/notifications`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notificaciones_activas: newState })
+            });
+
+            if (!response || !response.ok) throw new Error('Error al actualizar en el servidor.');
+
+            const updatedNote = await response.json();
+            this.notes.set(note.id, updatedNote); // Actualiza la nota localmente
+
+            if (updatedNote.notificaciones_activas) {
+                this.scheduleNotifications(updatedNote);
+            } else {
+                this.cancelNotifications(updatedNote);
+            }
+            
+            alert(`Notificaciones ${newState ? 'activadas' : 'desactivadas'} para esta nota.`);
+            this.renderNotes(); // Re-renderiza para actualizar el botón
+        } catch (error) {
+            console.error("Error al cambiar estado de notificación:", error);
+            alert("Hubo un problema al cambiar el estado de las notificaciones.");
+        }
+    },
+    
+    // ✨ NUEVO: Lógica para enviar mensajes al Service Worker
+    _postMessageToSW(message) {
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage(message);
+        } else {
+            console.error("No se pudo comunicar con el Service Worker.");
+        }
+    },
+
+    // ✨ NUEVO: Función para pedir al SW que programe notificaciones
+    scheduleNotifications(note) {
+        if (!note.fecha_hora) return;
+        console.log(`Programando notificaciones para la nota: ${note.nombre}`);
+        this._postMessageToSW({
+            type: 'SCHEDULE_NOTIFICATION',
+            payload: note
+        });
+    },
+
+    // ✨ NUEVO: Función para pedir al SW que cancele notificaciones
+    cancelNotifications(note) {
+        console.log(`Cancelando notificaciones para la nota: ${note.id}`);
+        this._postMessageToSW({
+            type: 'CANCEL_NOTIFICATION',
+            payload: { id: note.id }
+        });
+    },
+
     async handleFileUpload(noteId, file) { if (!file || file.size > 5 * 1024 * 1024) { alert(file ? "❌ El archivo es demasiado grande (máx 5MB)." : "No se seleccionó archivo."); return; } const formData = new FormData(); formData.append('file', file); try { const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${noteId}/upload`, { method: 'POST', body: formData }); if (!response || !response.ok) throw new Error('Error en la respuesta del servidor.'); alert('✅ Archivo subido con éxito!'); await this.refreshAllData(); } catch (error) { console.error('❌ Error al subir el archivo:', error); alert('❌ Hubo un problema al subir el archivo.'); } },
     createNote() { const overlay = document.getElementById('new-note-overlay'); document.getElementById('new-note-form').reset(); overlay.classList.remove('overlay-hidden'); document.getElementById('new-note-nombre').focus(); },
     _populateColorSelector() { const select = document.getElementById('new-note-color'); select.innerHTML = ''; this.COLORS.forEach(color => { const option = document.createElement('option'); option.value = color.value; option.textContent = color.name; if (color.value === "#f1e363ff") option.selected = true; select.appendChild(option); }); },
+    
     async _handleCreateNoteSubmit(event) {
-    event.preventDefault();
-
-    // 1. Obtenemos los valores de los nuevos campos de fecha y hora
-    const fecha = document.getElementById('new-note-fecha').value;
-    const hora = document.getElementById('new-note-hora').value;
-
-    // 2. Combinamos fecha y hora en el formato correcto (ISO 8601)
-    let fecha_hora = null;
-    if (fecha) {
-        // Si hay fecha pero no hora, se usa el inicio del día (00:00)
-        fecha_hora = `${fecha}T${hora || '00:00'}:00.000Z`;
-    }
-
-    // 3. Creamos el objeto de la nota con el nuevo valor de fecha_hora
-    const noteData = {
-        nombre: document.getElementById('new-note-nombre').value || "Nueva Nota",
-        contenido: document.getElementById('new-note-contenido').value,
-        tipo: document.getElementById('new-note-tipo').value,
-        color: document.getElementById('new-note-color').value,
-        fecha_hora: fecha_hora, // Usamos la fecha y hora combinadas
-        fijada: false
-    };
-
-    try {
-        const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(noteData)
-        });
-        if (!response || !response.ok) throw new Error('Error del servidor al crear la nota.');
-        
-        const newNote = await response.json();
-        this.notes.set(newNote.id, newNote);
-        this.renderNotes();
-        
-        const newNoteElement = document.querySelector(`.note[data-note-id='${newNote.id}']`);
-        if (newNoteElement) {
-            newNoteElement.classList.add('note-entering');
+        event.preventDefault();
+        const fecha = document.getElementById('new-note-fecha').value;
+        const hora = document.getElementById('new-note-hora').value;
+        let fecha_hora = null;
+        if (fecha) {
+            fecha_hora = `${fecha}T${hora || '00:00'}:00.000Z`;
         }
-        
-        this._closeNewNoteModal();
-    } catch (error) {
-        console.error('❌ Error al crear nota desde el modal:', error);
-        alert('Hubo un problema al guardar la nota.');
-    }
-},
+
+        const noteData = {
+            nombre: document.getElementById('new-note-nombre').value || "Nueva Nota",
+            contenido: document.getElementById('new-note-contenido').value,
+            tipo: document.getElementById('new-note-tipo').value,
+            color: document.getElementById('new-note-color').value,
+            fecha_hora: fecha_hora,
+            fijada: false,
+            notificaciones_activas: document.getElementById('new-note-notificaciones').checked
+        };
+
+        try {
+            const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(noteData)
+            });
+            if (!response || !response.ok) throw new Error('Error del servidor al crear la nota.');
+            
+            const newNote = await response.json();
+            this.notes.set(newNote.id, newNote);
+
+            if (newNote.notificaciones_activas && newNote.fecha_hora) {
+                this.scheduleNotifications(newNote);
+            }
+
+            this.renderNotes();
+            
+            const newNoteElement = document.querySelector(`.note[data-note-id='${newNote.id}']`);
+            if (newNoteElement) {
+                newNoteElement.classList.add('note-entering');
+            }
+            
+            this._closeNewNoteModal();
+        } catch (error) {
+            console.error('❌ Error al crear nota desde el modal:', error);
+            alert('Hubo un problema al guardar la nota.');
+        }
+    },
+
     _closeNewNoteModal() { document.getElementById('new-note-overlay').classList.add('overlay-hidden'); },
     async handleDateTimeChange(note, dateInput, timeInput) { let new_fecha_hora = null; if (dateInput.value) { new_fecha_hora = `${dateInput.value}T${timeInput.value || '00:00'}:00.000Z`; } if (note.fecha_hora !== new_fecha_hora) { note.fecha_hora = new_fecha_hora; await this.apiUpdate(note); } },
     async deletePastNotes() { const notesToDeleteIds = Array.from(this.notes.values()).filter(n => n.fecha_hora && n.fecha_hora < new Date().toISOString() && n.tipo === 'Entrega').map(n => n.id); if (notesToDeleteIds.length === 0) return alert("👍 No hay entregas antiguas para eliminar."); if (!confirm(`🧹 ¿Seguro que quieres borrar ${notesToDeleteIds.length} entrega(s) pasada(s)?`)) return; try { await Promise.all(notesToDeleteIds.map(id => this.fetchWithAuth(`${API_BASE_URL}/api/notes/${id}`, { method: 'DELETE' }))); await this.refreshAllData(); alert(`🧹 ${notesToDeleteIds.length} entregas antiguas fueron eliminadas.`); } catch (error) { console.error('❌ Error durante el borrado en lote:', error); } },
-
-    // ... (código anterior de NotesApp)
 
     renderNotes() {
         this.createColorFilterPanel();
@@ -183,28 +249,14 @@ const NotesApp = {
         }
 
         const grouped = this.groupNotesByColor();
-
-        // --- INICIO DE LA CORRECCIÓN ---
-        // Se asegura de que todas las columnas de color existentes se muestren,
-        // incluso si son nuevas y no están en el orden guardado.
-
-        const allCurrentColors = Object.keys(grouped); // Todos los colores de las notas actuales.
-        
-        // Filtra el orden guardado para mantener solo los colores que todavía están en uso.
+        const allCurrentColors = Object.keys(grouped);
         const validStoredOrder = this.columnOrder.filter(color => allCurrentColors.includes(color));
-
-        // Identifica los colores nuevos que no estaban en el orden guardado.
         const newColors = allCurrentColors.filter(color => !this.columnOrder.includes(color));
-
-        // El nuevo orden final es el orden guardado (ya filtrado) más los nuevos colores al final.
         const finalSortedColors = [...validStoredOrder, ...newColors];
-
-        // Actualiza el orden principal y lo guarda para futuras cargas.
         this.columnOrder = finalSortedColors;
         localStorage.setItem('columnOrder', JSON.stringify(this.columnOrder));
-        // --- FIN DE LA CORRECCIÓN ---
 
-        for (let color of finalSortedColors) { // Usa el nuevo orden final para renderizar
+        for (let color of finalSortedColors) {
             if (!grouped[color]) continue;
             const column = this.createColumnForColor(color, grouped[color]);
             if (this.activeColorFilter !== 'all' && this.activeColorFilter !== color) {
@@ -216,9 +268,6 @@ const NotesApp = {
         this._initColumnDragAndDrop();
     },
 
-// ... (resto del código de NotesApp)
-
-    // ✅ CÓDIGO RESTAURADO
     createColorFilterPanel() {
         let panel = document.getElementById("color-filter-panel");
         if (!panel) {
@@ -241,7 +290,6 @@ const NotesApp = {
         });
     },
     
-    // ✅ CÓDIGO RESTAURADO
     _initColumnDragAndDrop() {
         const container = document.getElementById("columns-container");
         if (!container || this.isViewingArchived || window.innerWidth <= 768) return;
@@ -258,7 +306,6 @@ const NotesApp = {
         });
     },
 
-    // ✅ CÓDIGO RESTAURADO
     sortNotes(a, b) {
         if (a.fijada && !b.fijada) return -1;
         if (!a.fijada && b.fijada) return 1;
@@ -268,7 +315,6 @@ const NotesApp = {
         return 0;
     },
 
-    // ✅ CÓDIGO RESTAURADO - ¡ESTA ERA LA CAUSA DEL ERROR!
     groupNotesByColor() {
         const grouped = {};
         this.notes.forEach(note => {
@@ -282,7 +328,6 @@ const NotesApp = {
         return grouped;
     },
 
-    // ✅ CÓDIGO RESTAURADO
     createColumnForColor(color, notesInGroup) {
         const column = document.createElement("div");
         column.className = "column";
@@ -295,7 +340,6 @@ const NotesApp = {
         return column;
     },
     
-    // ✅ CÓDIGO RESTAURADO
     createColumnTitle(color, noteCount) {
         const titleContainer = document.createElement("div");
         titleContainer.className = "column-title-draggable";
@@ -312,7 +356,6 @@ const NotesApp = {
         return titleContainer;
     },
     
-    // ✅ CÓDIGO RESTAURADO
     createNoteElement(note) {
         const noteDiv = document.createElement("div");
         noteDiv.className = "note";
@@ -327,7 +370,6 @@ const NotesApp = {
         return noteDiv;
     },
     
-    // ✅ CÓDIGO RESTAURADO
     styleNoteElement(div, note) {
         div.style.backgroundColor = note.color || "#f1e363ff";
         const contrastColor = this.getContrastColor(note.color);
@@ -340,7 +382,6 @@ const NotesApp = {
         }
     },
     
-    // ✅ CÓDIGO RESTAURADO
     createDateInput(note, timeInput) {
         const dateInput = document.createElement("input");
         dateInput.type = "date";
@@ -349,7 +390,6 @@ const NotesApp = {
         return dateInput;
     },
 
-    // ✅ CÓDIGO RESTAURADO
     createTimeInput(note, dateInput) {
         const timeInput = document.createElement("input");
         timeInput.type = "time";
@@ -389,6 +429,19 @@ const NotesApp = {
             this.toggleArchiveNote(n);
         };
         
+        // ✨ NUEVO: Botón para activar/desactivar notificaciones
+        const notificationBtn = document.createElement("button");
+        const notificationText = n.notificaciones_activas ? "🔕<span>Desactivar Avisos</span>" : "🔔<span>Activar Avisos</span>";
+        notificationBtn.innerHTML = notificationText;
+        notificationBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (n.fecha_hora) {
+                this.toggleNoteNotifications(n);
+            } else {
+                alert("Debes establecer una fecha y hora para activar las notificaciones.");
+            }
+        };
+
         const deleteBtn = this.createDeleteButton(n);
         const typeSelectLabel = document.createElement("label");
         typeSelectLabel.textContent = "🏷️ Tipo:";
@@ -403,7 +456,7 @@ const NotesApp = {
         colorSelectContainer.className = "menu-color-select";
         colorSelectContainer.append(colorSelectLabel, colorSelect);
         
-        menu.append(editBtn, uploadBtn, pinBtn, archiveBtn, deleteBtn, typeSelectContainer, colorSelectContainer);
+        menu.append(editBtn, uploadBtn, pinBtn, archiveBtn, notificationBtn, deleteBtn, typeSelectContainer, colorSelectContainer);
         
         moreOptionsBtn.onclick = (e) => {
             e.stopPropagation();
@@ -497,6 +550,15 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('login-button').addEventListener('click', () => AuthManager.signInWithGoogle());
     document.getElementById('logout-button').addEventListener('click', () => AuthManager.signOut());
     AuthManager.init();
+
+    // ✨ NUEVO: Registrar el Service Worker al cargar la página.
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+                .then(registration => console.log('✅ Service Worker registrado con éxito:', registration))
+                .catch(err => console.error('❌ Error al registrar el Service Worker:', err));
+        });
+    }
 });
 
 window.NotesApp = NotesApp;

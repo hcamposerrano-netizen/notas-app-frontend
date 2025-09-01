@@ -376,11 +376,16 @@ body.panel-open #panel-dimmer { /* ✅ Corregido */
   #columns-container.calendar-mode { padding: 1rem; }
   .day-layout { flex-direction: column; }
   .timeline-sidebar { width: 100%; box-sizing: border-box; }
+  /* --- 10. REGLAS PARA MÓVILES (@media) --- */
+@media (max-width: 768px) {
+  /* ... (otras reglas para móviles) ... */
+
   #color-filter-panel {
     display: flex !important;
     align-items: center;
     gap: 0.8rem;
     padding: 0.8rem;
+    padding-right: 5rem; /* ✨ AÑADIDO: Espacio para el botón de menú */
     overflow-x: auto;
     background: var(--color-background);
     border-bottom: 1px solid var(--color-subtle-border);
@@ -391,6 +396,9 @@ body.panel-open #panel-dimmer { /* ✅ Corregido */
     width: 100%;
     box-sizing: border-box;
     z-index: 50;
+  }
+
+  /* ... (el resto de las reglas para móviles) ... */
   }
   #color-filter-panel button { flex-shrink: 0; border: 2px solid var(--color-subtle-border); border-radius: 50%; width: 36px; height: 36px; cursor: pointer; transition: transform 0.2s ease, border-color 0.2s ease; }
   #color-filter-panel button:hover { transform: scale(1.1); }
@@ -421,3 +429,10 @@ body.panel-open #panel-dimmer { /* ✅ Corregido */
 #reminder-toggle { background: transparent; border: none; font-size: 1.2rem; transition: transform 0.3s ease; }
 #reminder-bar.collapsed #reminder-toggle { transform: rotate(180deg); }
 #reminder-bar.collapsed { max-height: 2.5em; }
+/* EN style.css (puedes añadirlo en la sección de modales) */
+.switch-label { display: flex; align-items: center; cursor: pointer; font-size: 0.9rem; }
+.switch-label input { opacity: 0; width: 0; height: 0; }
+.slider { position: relative; width: 40px; height: 22px; background-color: #ccc; border-radius: 22px; transition: .4s; margin-right: 10px; }
+.slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: .4s; }
+input:checked + .slider { background-color: var(--color-primary-accent); }
+input:checked + .slider:before { transform: translateX(18px); }

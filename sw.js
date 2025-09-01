@@ -1,8 +1,7 @@
 // Aumentamos la versión del caché para forzar una actualización
-const STATIC_CACHE_NAME = 'notas-app-static-cache-v4';
-const DYNAMIC_CACHE_NAME = 'notas-app-dynamic-cache-v2';
+const STATIC_CACHE_NAME = 'notas-app-static-cache-v5';
+const DYNAMIC_CACHE_NAME = 'notas-app-dynamic-cache-v3';
 
-// Lista de archivos estáticos que componen el "cascarón" de la aplicación.
 const APP_SHELL_FILES = [
   '/',
   '/index.html',
@@ -16,8 +15,8 @@ const APP_SHELL_FILES = [
   '/manifest.json',
   '/favicon.ico',
   '/apple-touch-icon.png',
-  '/icons/android-chrome-192x192.png', // Corregir ruta si es necesario
-  '/icons/android-chrome-512x512.png'  // Corregir ruta si es necesario
+  '/icons/android-chrome-192x192.png',
+  '/icons/android-chrome-512x512.png'
 ];
 
 // 1. Evento 'install': Cacheamos el App Shell.
@@ -26,10 +25,8 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(STATIC_CACHE_NAME).then(cache => {
       console.log('Cache estático abierto, guardando App Shell.');
-      // Usamos addAll para cachear todos los archivos del App Shell.
-      // Si alguno falla, la instalación entera falla, asegurando un estado consistente.
       return cache.addAll(APP_SHELL_FILES);
-    })
+    }).then(() => self.skipWaiting()) // Forzar la activación del nuevo SW
   );
 });
 
@@ -42,42 +39,108 @@ self.addEventListener('activate', event => {
         .filter(key => key !== STATIC_CACHE_NAME && key !== DYNAMIC_CACHE_NAME)
         .map(key => caches.delete(key))
       );
+    }).then(() => {
+        console.log('Cachés antiguos eliminados.');
+        return self.clients.claim(); // Tomar control inmediato de la página
     })
   );
-  return self.clients.claim();
 });
 
-// 3. Evento 'fetch': Interceptamos todas las peticiones de red.
+// ==============================================================
+// ✨ LÓGICA DE NOTIFICACIONES
+// ==============================================================
+
+// Almacenamos los IDs de los timeouts para poder cancelarlos
+const scheduledTimeouts = {};
+
+// Función para cancelar cualquier notificación programada para una nota
+function cancelScheduled(noteId) {
+    if (scheduledTimeouts[noteId] && scheduledTimeouts[noteId].length) {
+        console.log(`Cancelando ${scheduledTimeouts[noteId].length} notificaciones para la nota ${noteId}`);
+        scheduledTimeouts[noteId].forEach(timeoutId => clearTimeout(timeoutId));
+        delete scheduledTimeouts[noteId];
+    }
+}
+
+// Función para mostrar la notificación
+function mostrarNotificacion(note, tiempo) {
+    const options = {
+        body: `Tu nota "${note.nombre || '(Sin Título)'}" vence en ${tiempo}.`,
+        icon: '/icons/android-chrome-192x192.png',
+        badge: '/icons/android-chrome-192x192.png',
+        vibrate: [200, 100, 200],
+        tag: `nota-${note.id}` // Usamos un tag para poder reemplazar notificaciones si es necesario
+    };
+    // self.registration es una promesa, así que la resolvemos para usar showNotification
+    self.registration.showNotification('Recordatorio de Nota', options);
+}
+
+// Escuchamos los mensajes de la aplicación principal (app.js)
+self.addEventListener('message', event => {
+    const data = event.data;
+
+    if (!data) return;
+
+    if (data.type === 'SCHEDULE_NOTIFICATION') {
+        const note = data.payload;
+        const dueDate = new Date(note.fecha_hora);
+
+        // Primero, cancelamos cualquier notificación antigua para esta nota por si la fecha cambió
+        cancelScheduled(note.id);
+        
+        // Tiempos de recordatorio en milisegundos
+        const intervals = {
+            "2 días": 2 * 24 * 60 * 60 * 1000,
+            "24 horas": 24 * 60 * 60 * 1000,
+            "4 horas": 4 * 60 * 60 * 1000
+        };
+        
+        scheduledTimeouts[note.id] = [];
+
+        Object.entries(intervals).forEach(([label, interval]) => {
+            const notificationTime = dueDate.getTime() - interval;
+            const now = Date.now();
+            const delay = notificationTime - now;
+
+            if (delay > 0) {
+                console.log(`Programando notificación para "${note.nombre}" en ${label} (delay: ${delay}ms)`);
+                const timeoutId = setTimeout(() => {
+                    mostrarNotificacion(note, label);
+                }, delay);
+                scheduledTimeouts[note.id].push(timeoutId);
+            }
+        });
+    }
+
+    if (data.type === 'CANCEL_NOTIFICATION') {
+        const noteId = data.payload.id;
+        cancelScheduled(noteId);
+    }
+});
+
+
+// 3. Evento 'fetch': Interceptamos peticiones de red para modo offline.
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // Estrategia para las peticiones a la API (Stale-While-Revalidate)
+  // Estrategia para API: Network First, fallback to Cache
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
-      caches.open(DYNAMIC_CACHE_NAME).then(cache => {
-        return fetch(event.request).then(networkResponse => {
-            // Si la petición es exitosa, guardamos la nueva respuesta en el caché dinámico
-            cache.put(event.request, networkResponse.clone());
-            return networkResponse;
-        }).catch(() => {
-            // Si la red falla, intentamos devolver desde el caché
-            return cache.match(event.request);
+      fetch(event.request).then(networkResponse => {
+        return caches.open(DYNAMIC_CACHE_NAME).then(cache => {
+          cache.put(event.request, networkResponse.clone());
+          return networkResponse;
         });
+      }).catch(() => {
+        return caches.match(event.request);
       })
     );
   } 
-  // Estrategia para los archivos estáticos (Cache First)
+  // Estrategia para el resto: Cache First, fallback to Network
   else {
     event.respondWith(
       caches.match(event.request).then(response => {
-        // Devuelve el archivo desde el caché si existe, si no, ve a la red.
-        return response || fetch(event.request).then(fetchResponse => {
-            // Opcional: Cachear archivos estáticos no pre-cacheados dinámicamente
-            return caches.open(DYNAMIC_CACHE_NAME).then(cache => {
-                cache.put(event.request, fetchResponse.clone());
-                return fetchResponse;
-            });
-        });
+        return response || fetch(event.request);
       })
     );
   }
