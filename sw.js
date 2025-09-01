@@ -75,6 +75,8 @@ function mostrarNotificacion(note, tiempo) {
     self.registration.showNotification('Recordatorio de Nota', options);
 }
 
+// ✅ PEGA ESTA VERSIÓN MEJORADA EN sw.js
+
 // Escuchamos los mensajes de la aplicación principal (app.js)
 self.addEventListener('message', event => {
     const data = event.data;
@@ -85,14 +87,18 @@ self.addEventListener('message', event => {
         const note = data.payload;
         const dueDate = new Date(note.fecha_hora);
 
-        // Primero, cancelamos cualquier notificación antigua para esta nota por si la fecha cambió
+        // --- INICIO DE NUESTROS ESPÍAS ---
+        console.log(`[SW] Mensaje 'SCHEDULE_NOTIFICATION' recibido para: "${note.nombre}"`);
+        console.log(`[SW] La fecha/hora de la nota es: ${dueDate.toLocaleString()}`);
+        // --- FIN DE NUESTROS ESPÍAS ---
+
         cancelScheduled(note.id);
         
-        // Tiempos de recordatorio en milisegundos
+        // (Si estás probando, usa los intervalos de segundos. Si no, los de horas/días)
         const intervals = {
-            "2 días": 2 * 24 * 60 * 60 * 1000,
-            "24 horas": 24 * 60 * 60 * 1000,
-            "4 horas": 4 * 60 * 60 * 1000
+            "15 segundos": 15 * 1000,
+            "10 segundos": 10 * 1000,
+            "5 segundos": 5 * 1000
         };
         
         scheduledTimeouts[note.id] = [];
@@ -102,18 +108,29 @@ self.addEventListener('message', event => {
             const now = Date.now();
             const delay = notificationTime - now;
 
+            // --- MÁS ESPÍAS PARA VER EL CÁLCULO ---
+            console.log(`[SW] Verificando intervalo: "${label}"`);
+            console.log(`   - Hora de notificación calculada: ${new Date(notificationTime).toLocaleString()}`);
+            console.log(`   - Hora actual: ${new Date(now).toLocaleString()}`);
+            console.log(`   - Retraso a programar (delay): ${delay} ms`);
+            // --- FIN DE LOS ESPÍAS DE CÁLCULO ---
+
             if (delay > 0) {
-                console.log(`Programando notificación para "${note.nombre}" en ${label} (delay: ${delay}ms)`);
+                console.log(`   ✅ PROGRAMANDO notificación para "${label}" en ${delay} ms.`);
                 const timeoutId = setTimeout(() => {
+                    console.log(`[SW] ¡EJECUTANDO! Mostrando notificación para "${label}".`);
                     mostrarNotificacion(note, label);
                 }, delay);
                 scheduledTimeouts[note.id].push(timeoutId);
+            } else {
+                console.log(`   ❌ OMITIDO: La hora de notificación para "${label}" ya pasó.`);
             }
         });
     }
 
     if (data.type === 'CANCEL_NOTIFICATION') {
         const noteId = data.payload.id;
+        console.log(`[SW] Mensaje 'CANCEL_NOTIFICATION' recibido para la nota ID: ${noteId}`);
         cancelScheduled(noteId);
     }
 });
