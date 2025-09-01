@@ -166,6 +166,8 @@ const NotesApp = {
     async handleDateTimeChange(note, dateInput, timeInput) { let new_fecha_hora = null; if (dateInput.value) { new_fecha_hora = `${dateInput.value}T${timeInput.value || '00:00'}:00.000Z`; } if (note.fecha_hora !== new_fecha_hora) { note.fecha_hora = new_fecha_hora; await this.apiUpdate(note); } },
     async deletePastNotes() { const notesToDeleteIds = Array.from(this.notes.values()).filter(n => n.fecha_hora && n.fecha_hora < new Date().toISOString() && n.tipo === 'Entrega').map(n => n.id); if (notesToDeleteIds.length === 0) return alert("👍 No hay entregas antiguas para eliminar."); if (!confirm(`🧹 ¿Seguro que quieres borrar ${notesToDeleteIds.length} entrega(s) pasada(s)?`)) return; try { await Promise.all(notesToDeleteIds.map(id => this.fetchWithAuth(`${API_BASE_URL}/api/notes/${id}`, { method: 'DELETE' }))); await this.refreshAllData(); alert(`🧹 ${notesToDeleteIds.length} entregas antiguas fueron eliminadas.`); } catch (error) { console.error('❌ Error durante el borrado en lote:', error); } },
 
+    // ... (código anterior de NotesApp)
+
     renderNotes() {
         this.createColorFilterPanel();
         const container = document.getElementById("columns-container");
@@ -181,9 +183,28 @@ const NotesApp = {
         }
 
         const grouped = this.groupNotesByColor();
-        const sortedColors = this.columnOrder.length > 0 ? this.columnOrder : Object.keys(grouped);
 
-        for (let color of sortedColors) {
+        // --- INICIO DE LA CORRECCIÓN ---
+        // Se asegura de que todas las columnas de color existentes se muestren,
+        // incluso si son nuevas y no están en el orden guardado.
+
+        const allCurrentColors = Object.keys(grouped); // Todos los colores de las notas actuales.
+        
+        // Filtra el orden guardado para mantener solo los colores que todavía están en uso.
+        const validStoredOrder = this.columnOrder.filter(color => allCurrentColors.includes(color));
+
+        // Identifica los colores nuevos que no estaban en el orden guardado.
+        const newColors = allCurrentColors.filter(color => !this.columnOrder.includes(color));
+
+        // El nuevo orden final es el orden guardado (ya filtrado) más los nuevos colores al final.
+        const finalSortedColors = [...validStoredOrder, ...newColors];
+
+        // Actualiza el orden principal y lo guarda para futuras cargas.
+        this.columnOrder = finalSortedColors;
+        localStorage.setItem('columnOrder', JSON.stringify(this.columnOrder));
+        // --- FIN DE LA CORRECCIÓN ---
+
+        for (let color of finalSortedColors) { // Usa el nuevo orden final para renderizar
             if (!grouped[color]) continue;
             const column = this.createColumnForColor(color, grouped[color]);
             if (this.activeColorFilter !== 'all' && this.activeColorFilter !== color) {
@@ -194,6 +215,8 @@ const NotesApp = {
         this.updateReminders();
         this._initColumnDragAndDrop();
     },
+
+// ... (resto del código de NotesApp)
 
     // ✅ CÓDIGO RESTAURADO
     createColorFilterPanel() {
