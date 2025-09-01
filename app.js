@@ -398,81 +398,95 @@ const NotesApp = {
         return timeInput;
     },
 
-    createControls(n, l) {
-        const controlsContainer = document.createElement("div");
-        controlsContainer.className = "controls";
-        let dateInput, timeInput;
-        timeInput = this.createTimeInput(n, dateInput);
-        dateInput = this.createDateInput(n, timeInput);
-        controlsContainer.append(dateInput, timeInput);
-        const moreOptionsBtn = document.createElement("button");
-        moreOptionsBtn.className = "more-options-btn";
-        moreOptionsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>`;
-        moreOptionsBtn.title = "Más opciones";
-        const menu = document.createElement("div");
-        menu.className = "note-menu";
-        
-        const editBtn = document.createElement("button");
-        editBtn.innerHTML = "📝<span>Editar Avanzado</span>";
-        editBtn.onclick = () => this.Editor.open(n.id);
-        
-        const uploadBtn = document.createElement("button");
-        uploadBtn.innerHTML = "📎<span>Adjuntar Archivo</span>";
-        uploadBtn.onclick = () => { const fI = document.createElement('input'); fI.type = 'file'; fI.accept = ".pdf,.jpg,.jpeg,.png,.txt"; fI.onchange = (e) => this.handleFileUpload(n.id, e.target.files[0]); fI.click(); };
-        
-        const pinBtn = this.createPinButton(n);
-        
-        const archiveBtn = document.createElement("button");
-        archiveBtn.innerHTML = this.isViewingArchived ? "🔄<span>Restaurar</span>" : "🗄️<span>Archivar</span>";
-        archiveBtn.onclick = (e) => {
-            e.stopPropagation();
-            this.toggleArchiveNote(n);
-        };
-        
-        // ✨ NUEVO: Botón para activar/desactivar notificaciones
-        const notificationBtn = document.createElement("button");
-        const notificationText = n.notificaciones_activas ? "🔕<span>Desactivar Avisos</span>" : "🔔<span>Activar Avisos</span>";
-        notificationBtn.innerHTML = notificationText;
-        notificationBtn.onclick = (e) => {
-            e.stopPropagation();
-            if (n.fecha_hora) {
-                this.toggleNoteNotifications(n);
-            } else {
-                alert("Debes establecer una fecha y hora para activar las notificaciones.");
-            }
-        };
+    // PEGA ESTE CÓDIGO EN LUGAR DE TU FUNCIÓN createControls EXISTENTE
 
-        const deleteBtn = this.createDeleteButton(n);
-        const typeSelectLabel = document.createElement("label");
-        typeSelectLabel.textContent = "🏷️ Tipo:";
-        const typeSelect = this.createTypeSelect(n, l);
-        const typeSelectContainer = document.createElement("div");
-        typeSelectContainer.className = "menu-type-select";
-        typeSelectContainer.append(typeSelectLabel, typeSelect);
-        const colorSelectLabel = document.createElement("label");
-        colorSelectLabel.textContent = "🎨 Color:";
-        const colorSelect = this.createColorSelect(n);
-        const colorSelectContainer = document.createElement("div");
-        colorSelectContainer.className = "menu-color-select";
-        colorSelectContainer.append(colorSelectLabel, colorSelect);
-        
-        menu.append(editBtn, uploadBtn, pinBtn, archiveBtn, notificationBtn, deleteBtn, typeSelectContainer, colorSelectContainer);
-        
-        moreOptionsBtn.onclick = (e) => {
-            e.stopPropagation();
-            const parentNote = moreOptionsBtn.closest('.note');
-            document.querySelectorAll('.note-menu.show').forEach(m => {
-                if (m !== menu) {
-                    m.classList.remove('show');
-                    m.closest('.note').classList.remove('note-menu-open');
-                }
-            });
-            menu.classList.toggle('show');
-            parentNote.classList.toggle('note-menu-open');
-        };
-        controlsContainer.append(moreOptionsBtn, menu);
-        return controlsContainer;
-    },
+createControls(n, l) {
+    const controlsContainer = document.createElement("div");
+    controlsContainer.className = "controls";
+
+    // ✅ CORREGIDO: Se crean los elementos primero y luego se asignan los eventos
+    // para evitar problemas de referencia circular y que la hora se reinicie.
+    const dateInput = document.createElement("input");
+    dateInput.type = "date";
+    dateInput.value = n.fecha || "";
+
+    const timeInput = document.createElement("input");
+    timeInput.type = "time";
+    timeInput.value = n.hora || "";
+
+    dateInput.onchange = () => this.handleDateTimeChange(n, dateInput, timeInput);
+    timeInput.onchange = () => this.handleDateTimeChange(n, dateInput, timeInput);
+    
+    controlsContainer.append(dateInput, timeInput);
+
+    const moreOptionsBtn = document.createElement("button");
+    moreOptionsBtn.className = "more-options-btn";
+    moreOptionsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>`;
+    moreOptionsBtn.title = "Más opciones";
+    const menu = document.createElement("div");
+    menu.className = "note-menu";
+    
+    const editBtn = document.createElement("button");
+    editBtn.innerHTML = "📝<span>Editar Avanzado</span>";
+    editBtn.onclick = () => this.Editor.open(n.id);
+    
+    const uploadBtn = document.createElement("button");
+    uploadBtn.innerHTML = "📎<span>Adjuntar Archivo</span>";
+    uploadBtn.onclick = () => { const fI = document.createElement('input'); fI.type = 'file'; fI.accept = ".pdf,.jpg,.jpeg,.png,.txt"; fI.onchange = (e) => this.handleFileUpload(n.id, e.target.files[0]); fI.click(); };
+    
+    const pinBtn = this.createPinButton(n);
+    
+    const archiveBtn = document.createElement("button");
+    archiveBtn.innerHTML = this.isViewingArchived ? "🔄<span>Restaurar</span>" : "🗄️<span>Archivar</span>";
+    archiveBtn.onclick = (e) => {
+        e.stopPropagation();
+        this.toggleArchiveNote(n);
+    };
+    
+    // El botón de notificaciones ahora leerá el estado correcto
+    const notificationBtn = document.createElement("button");
+    const notificationText = n.notificaciones_activas ? "🔕<span>Desactivar Avisos</span>" : "🔔<span>Activar Avisos</span>";
+    notificationBtn.innerHTML = notificationText;
+    notificationBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (n.fecha_hora) {
+            this.toggleNoteNotifications(n);
+        } else {
+            alert("Debes establecer una fecha y hora para activar las notificaciones.");
+        }
+    };
+
+    const deleteBtn = this.createDeleteButton(n);
+    const typeSelectLabel = document.createElement("label");
+    typeSelectLabel.textContent = "🏷️ Tipo:";
+    const typeSelect = this.createTypeSelect(n, l);
+    const typeSelectContainer = document.createElement("div");
+    typeSelectContainer.className = "menu-type-select";
+    typeSelectContainer.append(typeSelectLabel, typeSelect);
+    const colorSelectLabel = document.createElement("label");
+    colorSelectLabel.textContent = "🎨 Color:";
+    const colorSelect = this.createColorSelect(n);
+    const colorSelectContainer = document.createElement("div");
+    colorSelectContainer.className = "menu-color-select";
+    colorSelectContainer.append(colorSelectLabel, colorSelect);
+    
+    menu.append(editBtn, uploadBtn, pinBtn, archiveBtn, notificationBtn, deleteBtn, typeSelectContainer, colorSelectContainer);
+    
+    moreOptionsBtn.onclick = (e) => {
+        e.stopPropagation();
+        const parentNote = moreOptionsBtn.closest('.note');
+        document.querySelectorAll('.note-menu.show').forEach(m => {
+            if (m !== menu) {
+                m.classList.remove('show');
+                m.closest('.note').classList.remove('note-menu-open');
+            }
+        });
+        menu.classList.toggle('show');
+        parentNote.classList.toggle('note-menu-open');
+    };
+    controlsContainer.append(moreOptionsBtn, menu);
+    return controlsContainer;
+},
 
     createAttachmentLink(n) { const c = document.createElement('div'); if (n.attachment_url && n.attachment_filename) { c.style.marginTop = "0.5rem"; const l = document.createElement('a'); l.href = n.attachment_url; l.target = "_blank"; l.textContent = `📄 ${n.attachment_filename}`; l.style.color = this.getContrastColor(n.color); l.style.textDecoration = "underline"; l.style.fontSize = "0.85rem"; c.appendChild(l); } return c; },
     createTypeLabel(n) { const l = document.createElement("div"); l.className = "note-type-label"; l.textContent = n.tipo || "Clase"; Object.assign(l.style, { fontSize: "0.7em", fontWeight: "bold", marginBottom: "0.2em" }); return l; },
