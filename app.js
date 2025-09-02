@@ -79,25 +79,7 @@ const NotesApp = {
             const notesFromServer = await response.json();
             this.notes.clear();
             (notesFromServer || []).forEach(n => {
-    // Si la nota tiene un timestamp...
-    if (n.fecha_hora) {
-        // ...creamos un objeto Date a partir de él.
-        const localDate = new Date(n.fecha_hora);
-
-        // Creamos la propiedad 'fecha' en formato YYYY-MM-DD.
-        // Ojo: getMonth() es base 0, por eso se suma 1. padStart asegura los dos dígitos.
-        const year = localDate.getFullYear();
-        const month = String(localDate.getMonth() + 1).padStart(2, '0');
-        const day = String(localDate.getDate()).padStart(2, '0');
-        n.fecha = `${year}-${month}-${day}`;
-
-        // Creamos la propiedad 'hora' en formato HH:MM.
-        const hours = String(localDate.getHours()).padStart(2, '0');
-        const minutes = String(localDate.getMinutes()).padStart(2, '0');
-        n.hora = `${hours}:${minutes}`;
-    }
-    // Guardamos la nota ya procesada en nuestro mapa.
-    this.notes.set(n.id, n);
+    
 });
             this.renderNotes();
         } catch (error) { console.error('❌ Error al recargar datos:', error); }
