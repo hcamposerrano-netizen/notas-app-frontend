@@ -1,5 +1,5 @@
 // ==============================================================
-// 📱 APLICACIÓN DE NOTAS - VERSIÓN 9.3 (CON NOTIFICACIONES INTEGRADAS)
+// 📱 APLICACIÓN DE NOTAS - VERSIÓN 9.4 (ZONA HORARIA CORREGIDA)
 // ==============================================================
 
 // --- CONFIGURACIÓN DE SUPABASE ---
@@ -113,7 +113,6 @@ const NotesApp = {
         }, 300);
     },
 
-    // ✨ NUEVO: Lógica para activar/desactivar notificaciones de una nota
     async toggleNoteNotifications(note) {
         if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
         const newState = !note.notificaciones_activas;
@@ -136,7 +135,7 @@ const NotesApp = {
             if (!response || !response.ok) throw new Error('Error al actualizar en el servidor.');
 
             const updatedNote = await response.json();
-            this.notes.set(note.id, updatedNote); // Actualiza la nota localmente
+            this.notes.set(note.id, updatedNote); 
 
             if (updatedNote.notificaciones_activas) {
                 this.scheduleNotifications(updatedNote);
@@ -145,20 +144,16 @@ const NotesApp = {
             }
             
             alert(`Notificaciones ${newState ? 'activadas' : 'desactivadas'} para esta nota.`);
-            this.renderNotes(); // Re-renderiza para actualizar el botón
+            this.renderNotes(); 
         } catch (error) {
             console.error("Error al cambiar estado de notificación:", error);
             alert("Hubo un problema al cambiar el estado de las notificaciones.");
         }
     },
     
-    // ✅ PEGA ESTA VERSIÓN CORREGIDA EN app.js
     _postMessageToSW(message) {
-        // Usamos navigator.serviceWorker.ready, que es una promesa que se resuelve
-        // cuando un Service Worker está activo y controlando la página.
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.ready.then(registration => {
-                // Una vez que está listo, le enviamos el mensaje.
                 registration.active.postMessage(message);
                 console.log("Mensaje enviado al Service Worker:", message.type);
             }).catch(err => {
@@ -169,7 +164,6 @@ const NotesApp = {
         }
     },
 
-    // ✨ NUEVO: Función para pedir al SW que programe notificaciones
     scheduleNotifications(note) {
         if (!note.fecha_hora) return;
         console.log(`Programando notificaciones para la nota: ${note.nombre}`);
@@ -179,7 +173,6 @@ const NotesApp = {
         });
     },
 
-    // ✨ NUEVO: Función para pedir al SW que cancele notificaciones
     cancelNotifications(note) {
         console.log(`Cancelando notificaciones para la nota: ${note.id}`);
         this._postMessageToSW({
@@ -192,20 +185,18 @@ const NotesApp = {
     createNote() { const overlay = document.getElementById('new-note-overlay'); document.getElementById('new-note-form').reset(); overlay.classList.remove('overlay-hidden'); document.getElementById('new-note-nombre').focus(); },
     _populateColorSelector() { const select = document.getElementById('new-note-color'); select.innerHTML = ''; this.COLORS.forEach(color => { const option = document.createElement('option'); option.value = color.value; option.textContent = color.name; if (color.value === "#f1e363ff") option.selected = true; select.appendChild(option); }); },
     
+    // ✅ CORREGIDO: Lógica de zona horaria al crear una nota.
     async _handleCreateNoteSubmit(event) {
         event.preventDefault();
         const fecha = document.getElementById('new-note-fecha').value;
         const hora = document.getElementById('new-note-hora').value;
         let fecha_hora = null;
-if (fecha) {
-    // 1. Creamos una fecha como si fuera local, sin especificar zona horaria.
-    const localDateString = `${fecha}T${hora || '00:00'}:00`;
-    // 2. Creamos un objeto Date a partir de esa cadena. JS asumirá que es la zona horaria del usuario.
-    const localDate = new Date(localDateString);
-    // 3. Convertimos esa fecha local a la cadena estándar ISO (que estará en UTC).
-    //    Ej: Si un usuario en UTC-6 pone las 16:00, esto generará "...T22:00:00.000Z"
-    fecha_hora = localDate.toISOString();
-}
+        if (fecha) {
+            // Se construye la fecha como una cadena local y luego se convierte a ISO (UTC).
+            const localDateString = `${fecha}T${hora || '00:00'}:00`;
+            const localDate = new Date(localDateString);
+            fecha_hora = localDate.toISOString();
+        }
 
         const noteData = {
             nombre: document.getElementById('new-note-nombre').value || "Nueva Nota",
@@ -247,22 +238,22 @@ if (fecha) {
     },
 
     _closeNewNoteModal() { document.getElementById('new-note-overlay').classList.add('overlay-hidden'); },
-    async handleDateTimeChange(note, dateInput, timeInput) {
-    // ▼▼ AÑADE ESTA LÍNEA AQUÍ ▼▼
-    if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
-    // ▲▲ FIN DE LA LÍNEA A AÑADIR ▲▲
     
-let new_fecha_hora = null;
-if (dateInput.value) {
-    const localDateString = `${dateInput.value}T${timeInput.value || '00:00'}:00`;
-    const localDate = new Date(localDateString);
-    new_fecha_hora = localDate.toISOString();
-}
-    if (note.fecha_hora !== new_fecha_hora) {
-        note.fecha_hora = new_fecha_hora;
-        await this.apiUpdate(note);
-    }
-},
+    // ✅ CORREGIDO: Lógica de zona horaria al editar una nota existente.
+    async handleDateTimeChange(note, dateInput, timeInput) {
+        if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
+        let new_fecha_hora = null;
+        if (dateInput.value) {
+            const localDateString = `${dateInput.value}T${timeInput.value || '00:00'}:00`;
+            const localDate = new Date(localDateString);
+            new_fecha_hora = localDate.toISOString();
+        }
+        if (note.fecha_hora !== new_fecha_hora) {
+            note.fecha_hora = new_fecha_hora;
+            await this.apiUpdate(note);
+        }
+    },
+
     async deletePastNotes() { const notesToDeleteIds = Array.from(this.notes.values()).filter(n => n.fecha_hora && n.fecha_hora < new Date().toISOString() && n.tipo === 'Entrega').map(n => n.id); if (notesToDeleteIds.length === 0) return alert("👍 No hay entregas antiguas para eliminar."); if (!confirm(`🧹 ¿Seguro que quieres borrar ${notesToDeleteIds.length} entrega(s) pasada(s)?`)) return; try { await Promise.all(notesToDeleteIds.map(id => this.fetchWithAuth(`${API_BASE_URL}/api/notes/${id}`, { method: 'DELETE' }))); await this.refreshAllData(); alert(`🧹 ${notesToDeleteIds.length} entregas antiguas fueron eliminadas.`); } catch (error) { console.error('❌ Error durante el borrado en lote:', error); } },
 
     renderNotes() {
@@ -429,154 +420,144 @@ if (dateInput.value) {
         return timeInput;
     },
 
-    // PEGA ESTE CÓDIGO EN LUGAR DE TU FUNCIÓN createControls EXISTENTE
+    createControls(n, l) {
+        const controlsContainer = document.createElement("div");
+        controlsContainer.className = "controls";
 
-createControls(n, l) {
-    const controlsContainer = document.createElement("div");
-    controlsContainer.className = "controls";
+        const dateInput = document.createElement("input");
+        dateInput.type = "date";
+        dateInput.value = n.fecha || "";
 
-    // ✅ CORREGIDO: Se crean los elementos primero y luego se asignan los eventos
-    // para evitar problemas de referencia circular y que la hora se reinicie.
-    const dateInput = document.createElement("input");
-    dateInput.type = "date";
-    dateInput.value = n.fecha || "";
+        const timeInput = document.createElement("input");
+        timeInput.type = "time";
+        timeInput.value = n.hora || "";
 
-    const timeInput = document.createElement("input");
-    timeInput.type = "time";
-    timeInput.value = n.hora || "";
+        dateInput.onchange = () => this.handleDateTimeChange(n, dateInput, timeInput);
+        timeInput.onchange = () => this.handleDateTimeChange(n, dateInput, timeInput);
+        
+        controlsContainer.append(dateInput, timeInput);
 
-    dateInput.onchange = () => this.handleDateTimeChange(n, dateInput, timeInput);
-    timeInput.onchange = () => this.handleDateTimeChange(n, dateInput, timeInput);
-    
-    controlsContainer.append(dateInput, timeInput);
-
-    const moreOptionsBtn = document.createElement("button");
-    moreOptionsBtn.className = "more-options-btn";
-    moreOptionsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>`;
-    moreOptionsBtn.title = "Más opciones";
-    const menu = document.createElement("div");
-    menu.className = "note-menu";
-    
-    const editBtn = document.createElement("button");
-    editBtn.innerHTML = "📝<span>Editar Avanzado</span>";
-    editBtn.onclick = () => this.Editor.open(n.id);
-    
-    const uploadBtn = document.createElement("button");
-    uploadBtn.innerHTML = "📎<span>Adjuntar Archivo</span>";
-    uploadBtn.onclick = () => { const fI = document.createElement('input'); fI.type = 'file'; fI.accept = ".pdf,.jpg,.jpeg,.png,.txt"; fI.onchange = (e) => this.handleFileUpload(n.id, e.target.files[0]); fI.click(); };
-    
-    const pinBtn = this.createPinButton(n);
-    
-    const archiveBtn = document.createElement("button");
-    archiveBtn.innerHTML = this.isViewingArchived ? "🔄<span>Restaurar</span>" : "🗄️<span>Archivar</span>";
-    archiveBtn.onclick = (e) => {
-        e.stopPropagation();
-        this.toggleArchiveNote(n);
-    };
-    
-    // El botón de notificaciones ahora leerá el estado correcto
-    const notificationBtn = document.createElement("button");
-    const notificationText = n.notificaciones_activas ? "🔕<span>Desactivar Avisos</span>" : "🔔<span>Activar Avisos</span>";
-    notificationBtn.innerHTML = notificationText;
-    notificationBtn.onclick = (e) => {
-        e.stopPropagation();
-        if (n.fecha_hora) {
-            this.toggleNoteNotifications(n);
-        } else {
-            alert("Debes establecer una fecha y hora para activar las notificaciones.");
-        }
-    };
-
-    const deleteBtn = this.createDeleteButton(n);
-    const typeSelectLabel = document.createElement("label");
-    typeSelectLabel.textContent = "🏷️ Tipo:";
-    const typeSelect = this.createTypeSelect(n, l);
-    const typeSelectContainer = document.createElement("div");
-    typeSelectContainer.className = "menu-type-select";
-    typeSelectContainer.append(typeSelectLabel, typeSelect);
-    const colorSelectLabel = document.createElement("label");
-    colorSelectLabel.textContent = "🎨 Color:";
-    const colorSelect = this.createColorSelect(n);
-    const colorSelectContainer = document.createElement("div");
-    colorSelectContainer.className = "menu-color-select";
-    colorSelectContainer.append(colorSelectLabel, colorSelect);
-    
-    menu.append(editBtn, uploadBtn, pinBtn, archiveBtn, notificationBtn, deleteBtn, typeSelectContainer, colorSelectContainer);
-    
-    moreOptionsBtn.onclick = (e) => {
-        e.stopPropagation();
-        const parentNote = moreOptionsBtn.closest('.note');
-        document.querySelectorAll('.note-menu.show').forEach(m => {
-            if (m !== menu) {
-                m.classList.remove('show');
-                m.closest('.note').classList.remove('note-menu-open');
+        const moreOptionsBtn = document.createElement("button");
+        moreOptionsBtn.className = "more-options-btn";
+        moreOptionsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>`;
+        moreOptionsBtn.title = "Más opciones";
+        const menu = document.createElement("div");
+        menu.className = "note-menu";
+        
+        const editBtn = document.createElement("button");
+        editBtn.innerHTML = "📝<span>Editar Avanzado</span>";
+        editBtn.onclick = () => this.Editor.open(n.id);
+        
+        const uploadBtn = document.createElement("button");
+        uploadBtn.innerHTML = "📎<span>Adjuntar Archivo</span>";
+        uploadBtn.onclick = () => { const fI = document.createElement('input'); fI.type = 'file'; fI.accept = ".pdf,.jpg,.jpeg,.png,.txt"; fI.onchange = (e) => this.handleFileUpload(n.id, e.target.files[0]); fI.click(); };
+        
+        const pinBtn = this.createPinButton(n);
+        
+        const archiveBtn = document.createElement("button");
+        archiveBtn.innerHTML = this.isViewingArchived ? "🔄<span>Restaurar</span>" : "🗄️<span>Archivar</span>";
+        archiveBtn.onclick = (e) => {
+            e.stopPropagation();
+            this.toggleArchiveNote(n);
+        };
+        
+        const notificationBtn = document.createElement("button");
+        const notificationText = n.notificaciones_activas ? "🔕<span>Desactivar Avisos</span>" : "🔔<span>Activar Avisos</span>";
+        notificationBtn.innerHTML = notificationText;
+        notificationBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (n.fecha_hora) {
+                this.toggleNoteNotifications(n);
+            } else {
+                alert("Debes establecer una fecha y hora para activar las notificaciones.");
             }
-        });
-        menu.classList.toggle('show');
-        parentNote.classList.toggle('note-menu-open');
-    };
-    controlsContainer.append(moreOptionsBtn, menu);
-    return controlsContainer;
-},
+        };
+
+        const deleteBtn = this.createDeleteButton(n);
+        const typeSelectLabel = document.createElement("label");
+        typeSelectLabel.textContent = "🏷️ Tipo:";
+        const typeSelect = this.createTypeSelect(n, l);
+        const typeSelectContainer = document.createElement("div");
+        typeSelectContainer.className = "menu-type-select";
+        typeSelectContainer.append(typeSelectLabel, typeSelect);
+        const colorSelectLabel = document.createElement("label");
+        colorSelectLabel.textContent = "🎨 Color:";
+        const colorSelect = this.createColorSelect(n);
+        const colorSelectContainer = document.createElement("div");
+        colorSelectContainer.className = "menu-color-select";
+        colorSelectContainer.append(colorSelectLabel, colorSelect);
+        
+        menu.append(editBtn, uploadBtn, pinBtn, archiveBtn, notificationBtn, deleteBtn, typeSelectContainer, colorSelectContainer);
+        
+        moreOptionsBtn.onclick = (e) => {
+            e.stopPropagation();
+            const parentNote = moreOptionsBtn.closest('.note');
+            document.querySelectorAll('.note-menu.show').forEach(m => {
+                if (m !== menu) {
+                    m.classList.remove('show');
+                    m.closest('.note').classList.remove('note-menu-open');
+                }
+            });
+            menu.classList.toggle('show');
+            parentNote.classList.toggle('note-menu-open');
+        };
+        controlsContainer.append(moreOptionsBtn, menu);
+        return controlsContainer;
+    },
 
     createAttachmentLink(n) { const c = document.createElement('div'); if (n.attachment_url && n.attachment_filename) { c.style.marginTop = "0.5rem"; const l = document.createElement('a'); l.href = n.attachment_url; l.target = "_blank"; l.textContent = `📄 ${n.attachment_filename}`; l.style.color = this.getContrastColor(n.color); l.style.textDecoration = "underline"; l.style.fontSize = "0.85rem"; c.appendChild(l); } return c; },
     createTypeLabel(n) { const l = document.createElement("div"); l.className = "note-type-label"; l.textContent = n.tipo || "Clase"; Object.assign(l.style, { fontSize: "0.7em", fontWeight: "bold", marginBottom: "0.2em" }); return l; },
     createNameInput(n) { const i = document.createElement("input"); i.type = "text"; i.placeholder = "Título..."; i.value = n.nombre || ""; i.oninput = () => { n.nombre = i.value; this.debouncedSave(n.id); }; return i; },
     createContentArea(n) { const t = document.createElement("textarea"); t.value = n.contenido; t.oninput = () => { n.contenido = t.value; this.debouncedSave(n.id); }; return t; },
     createTypeSelect(n, l) {
-    const s = document.createElement("select");
-    ["Clase", "Entrega"].forEach(t => {
-        const o = document.createElement("option");
-        o.value = t;
-        o.textContent = t;
-        if (t === n.tipo) o.selected = true;
-        s.appendChild(o);
-    });
-    s.addEventListener("change", () => {
-        // ▼▼ AÑADE ESTA LÍNEA AQUÍ ▼▼
-        if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
-        // ▲▲ FIN DE LA LÍNEA A AÑADIR ▲▲
-        n.tipo = s.value;
-        l.textContent = s.value;
-        this.styleNoteElement(s.closest('.note'), n);
-        this.apiUpdate(n);
-    });
-    return s;
-},
-     createColorSelect(n) {
-    const s = document.createElement("select");
-    this.COLORS.forEach(c => {
-        const o = document.createElement("option");
-        o.value = c.value;
-        o.textContent = c.name;
-        if (c.value === n.color) o.selected = true;
-        s.appendChild(o);
-    });
-    s.onchange = () => {
-        // ▼▼ AÑADE ESTA LÍNEA AQUÍ ▼▼
-        if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
-        // ▲▲ FIN DE LA LÍNEA A AÑADIR ▲▲
-        n.color = s.value;
-        this.apiUpdate(n);
-    };
-    return s;
-},
+        const s = document.createElement("select");
+        ["Clase", "Entrega"].forEach(t => {
+            const o = document.createElement("option");
+            o.value = t;
+            o.textContent = t;
+            if (t === n.tipo) o.selected = true;
+            s.appendChild(o);
+        });
+        s.addEventListener("change", () => {
+            if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
+            n.tipo = s.value;
+            l.textContent = s.value;
+            this.styleNoteElement(s.closest('.note'), n);
+            this.apiUpdate(n);
+        });
+        return s;
+    },
+    createColorSelect(n) {
+        const s = document.createElement("select");
+        this.COLORS.forEach(c => {
+            const o = document.createElement("option");
+            o.value = c.value;
+            o.textContent = c.name;
+            if (c.value === n.color) o.selected = true;
+            s.appendChild(o);
+        });
+        s.onchange = () => {
+            if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
+            n.color = s.value;
+            this.apiUpdate(n);
+        };
+        return s;
+    },
     createPinButton(n) {
-    const b = document.createElement("button");
-    const u = () => {
-        b.innerHTML = n.fijada ? "📌<span>Desfijar Nota</span>" : "📍<span>Fijar Nota</span>";
-    };
-    b.onclick = (e) => {
-        // ✅ CORRECCIÓN: Se cancela el guardado automático pendiente.
-        if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
-        e.stopPropagation();
-        n.fijada = !n.fijada;
+        const b = document.createElement("button");
+        const u = () => {
+            b.innerHTML = n.fijada ? "📌<span>Desfijar Nota</span>" : "📍<span>Fijar Nota</span>";
+        };
+        b.onclick = (e) => {
+            if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
+            e.stopPropagation();
+            n.fijada = !n.fijada;
+            u();
+            this.apiUpdate(n);
+        };
         u();
-        this.apiUpdate(n);
-    };
-    u();
-    return b;
-},
+        return b;
+    },
     createDeleteButton(n) { const b = document.createElement("button"); b.innerHTML = "🗑️<span>Borrar Nota</span>"; b.onclick = (e) => { e.stopPropagation(); if (confirm("¿Seguro que quieres borrar esta nota?")) { const el = b.closest('.note'); el.classList.add('note-leaving'); setTimeout(async () => { await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${n.id}`, { method: 'DELETE' }); this.notes.delete(n.id); this.renderNotes(); }, 300); } }; return b; },
     updateReminders() { const rL = document.getElementById("reminder-list"); const u = [...this.notes.values()].filter(n => n.fecha_hora && new Date(n.fecha_hora) >= new Date() && n.tipo === "Entrega").sort(this.sortNotes).slice(0, 5); rL.innerHTML = ""; u.forEach(n => { const li = document.createElement("li"); li.textContent = `${n.fecha}${n.hora ? ' ' + n.hora : ''} - ${n.nombre || "(sin título)"}`; rL.appendChild(li); }); this.renderLinks(); },
     renderLinks() { const l = document.getElementById("link-list"); if(!l) return; l.innerHTML = ""; this.links.forEach((u, i) => { const li = document.createElement("li"); const a = document.createElement("a"); a.href = u; a.target = "_blank"; a.textContent = u; const d = document.createElement("button"); d.textContent = "🗑️"; d.onclick = () => { this.links.splice(i, 1); this.renderLinks(); }; li.append(a, d); l.appendChild(li); }); },
@@ -647,7 +628,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('logout-button').addEventListener('click', () => AuthManager.signOut());
     AuthManager.init();
 
-    // ✨ NUEVO: Registrar el Service Worker al cargar la página.
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('/sw.js')
