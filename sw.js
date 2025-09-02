@@ -1,5 +1,5 @@
 // =================================================================
-// 🚀 SERVICE WORKER PARA NOTAS APP - VERSIÓN 3 (PERSISTENTE CON IndexedDB)
+// 🚀 SERVICE WORKER PARA NOTAS APP - VERSIÓN 4 (CON VERIFICACIÓN PERIÓDICA)
 // =================================================================
 
 // --- 1. CONFIGURACIÓN DE CACHÉ ---
@@ -16,6 +16,7 @@ const DB_NAME = 'ScheduledNotificationsDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'notifications';
 let db;
+let notificationInterval; // Variable para controlar nuestro intervalo
 
 function openDb() {
   if (db) return Promise.resolve(db);
@@ -51,8 +52,14 @@ self.addEventListener('activate', event => {
         .map(key => caches.delete(key))
       );
     }).then(() => {
-        console.log('[SW] Activación completa. Comprobando notificaciones pendientes...');
-        return self.clients.claim().then(() => checkAndFireNotifications()); // Comprobar al activar
+        console.log('[SW] Activación completa. Iniciando comprobador de notificaciones...');
+        return self.clients.claim().then(() => {
+          // ✅ CORRECCIÓN: Iniciar el intervalo periódico aquí
+          if (!notificationInterval) {
+            notificationInterval = setInterval(checkAndFireNotifications, 60000); // Cada 60 segundos
+          }
+          checkAndFireNotifications(); // Comprobar inmediatamente al activar
+        }); 
     })
   );
 });
@@ -60,26 +67,37 @@ self.addEventListener('activate', event => {
 // --- 4. LÓGICA DE NOTIFICACIONES CON INDEXEDDB ---
 
 async function checkAndFireNotifications() {
-    await openDb();
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
-    const index = store.index('timestamp');
-    const range = IDBKeyRange.upperBound(Date.now());
-    
-    const request = index.getAll(range);
-    request.onsuccess = () => {
-        const notificationsToFire = request.result;
-        if (notificationsToFire.length > 0) {
-            console.log(`[SW] Se encontraron ${notificationsToFire.length} notificaciones vencidas.`);
-            notificationsToFire.forEach(notif => {
-                self.registration.showNotification(notif.title, notif.options);
-                store.delete(notif.id);
-            });
-        } else {
-            console.log('[SW] No hay notificaciones vencidas para mostrar.');
+    console.log('[SW] Comprobando notificaciones pendientes a las', new Date().toLocaleTimeString());
+    try {
+        await openDb();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const index = store.index('timestamp');
+        // Rango para todas las notificaciones cuyo tiempo ya pasó
+        const range = IDBKeyRange.upperBound(Date.now());
+        
+        const request = index.getAll(range);
+
+        request.onsuccess = () => {
+            const notificationsToFire = request.result;
+            if (notificationsToFire.length > 0) {
+                console.log(`[SW] Se encontraron ${notificationsToFire.length} notificaciones vencidas para disparar.`);
+                notificationsToFire.forEach(notif => {
+                    self.registration.showNotification(notif.title, notif.options);
+                    store.delete(notif.id); // Eliminar después de mostrar
+                });
+            } else {
+                console.log('[SW] No hay notificaciones vencidas.');
+            }
+        };
+        request.onerror = (event) => {
+            console.error('[SW] Error al buscar notificaciones en IndexedDB:', event.target.error);
         }
-    };
+    } catch (error) {
+        console.error('[SW] Error en la función checkAndFireNotifications:', error);
+    }
 }
+
 
 async function scheduleNotifications(note) {
     console.log(`[SW] Recibida orden para programar notificaciones para: "${note.nombre}"`);
@@ -92,13 +110,6 @@ async function scheduleNotifications(note) {
         "24 horas": 24 * 60 * 60 * 1000,
         "4 horas": 4 * 60 * 60 * 1000
     };
-    /*
-    const intervals = {
-        "2 minutos antes": 2 * 60 * 1000,
-        "1 minuto antes": 1 * 60 * 1000,
-        "30 segundos antes": 30 * 1000
-    };
-    */
 
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
@@ -117,7 +128,7 @@ async function scheduleNotifications(note) {
                 }
             };
             store.add(notificationData);
-            console.log(`[SW] ✅ Guardada notificación de "${label}" en la base de datos.`);
+            console.log(`[SW] ✅ Guardada notificación de "${label}" en IndexedDB para dispararse a las ${new Date(timestamp).toLocaleString()}`);
         }
     });
 }
@@ -169,21 +180,24 @@ self.addEventListener('notificationclick', event => {
 
 // --- 5. ESTRATEGIA DE CACHÉ ---
 self.addEventListener('fetch', event => {
+    // No aplicar estrategia de caché para las peticiones de la API, ir siempre a la red
+    if (event.request.url.includes('/api/')) {
+        event.respondWith(fetch(event.request));
+        return;
+    }
+
     event.respondWith(
         caches.match(event.request).then(responseFromCache => {
+            // Si está en caché, lo devuelve. Si no, va a la red.
             return responseFromCache || fetch(event.request).then(networkResponse => {
-                // Para peticiones de API, las guardamos en el caché dinámico
-                if (event.request.url.includes('/api/')) {
-                    return caches.open(DYNAMIC_CACHE_NAME).then(cache => {
-                        cache.put(event.request.url, networkResponse.clone());
-                        return networkResponse;
-                    });
-                }
-                return networkResponse;
+                // Guarda la respuesta en el caché dinámico para futuras peticiones offline
+                return caches.open(DYNAMIC_CACHE_NAME).then(cache => {
+                    cache.put(event.request, networkResponse.clone());
+                    return networkResponse;
+                });
             });
         }).catch(() => {
-            // Si todo falla (offline y no está en caché)
-            // podrías devolver una página de fallback si la tuvieras.
+            // Fallback en caso de error (opcional)
         })
     );
 });
