@@ -20,7 +20,6 @@ const APP_SHELL_FILES = [
   '/Search-notes.js',
   '/ui-interactions.js',
   '/manifest.json',
-  '/favicon.ico',
   '/apple-touch-icon.png',
   '/icons/android-chrome-192x192.png',
   '/icons/android-chrome-512x512.png'
