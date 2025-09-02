@@ -1,5 +1,5 @@
 // ==============================================================
-// 📱 APLICACIÓN DE NOTAS - VERSIÓN 9.4 (ZONA HORARIA CORREGIDA)
+// 📱 APLICACIÓN DE NOTAS - VERSIÓN 9.5 (ESTABLE)
 // ==============================================================
 
 // --- CONFIGURACIÓN DE SUPABASE ---
@@ -64,6 +64,22 @@ const NotesApp = {
     isViewingArchived: false,
     COLORS: [ { name: "Amarillo", value: "#f1e363ff" }, { name: "Azul", value: "#81d4fa" }, { name: "Verde", value: "#78a347ff" }, { name: "Rosa", value: "#b16982ff" }, { name: "Lila", value: "#8b5794ff" }, { name: "Naranja", value: "#ce730cff" }, { name: "Turquesa", value: "#558f97ff" }, { name: "Gris", value: "#afa4a4ff" } ],
 
+    // ✅ Helper para procesar las notas y asegurar formato de fecha/hora local
+    _processNote(note) {
+        if (note.fecha_hora) {
+            const localDate = new Date(note.fecha_hora);
+            const year = localDate.getFullYear();
+            const month = (localDate.getMonth() + 1).toString().padStart(2, '0');
+            const day = localDate.getDate().toString().padStart(2, '0');
+            note.fecha = `${year}-${month}-${day}`;
+
+            const hours = localDate.getHours().toString().padStart(2, '0');
+            const minutes = localDate.getMinutes().toString().padStart(2, '0');
+            note.hora = `${hours}:${minutes}`;
+        }
+        return note;
+    },
+
     async fetchWithAuth(url, options = {}) {
         const token = AuthManager.getToken();
         if (!token) { console.error("No hay token de autenticación."); return null; }
@@ -71,16 +87,20 @@ const NotesApp = {
         return fetch(url, { ...options, headers });
     },
 
+    // ✅ CORREGIDO: La función ahora carga las notas correctamente
     async refreshAllData() {
         const endpoint = this.isViewingArchived ? '/api/notes/archived' : '/api/notes';
         try {
             const response = await this.fetchWithAuth(`${API_BASE_URL}${endpoint}`);
             if (!response || !response.ok) throw new Error("No se pudo obtener los datos del servidor");
             const notesFromServer = await response.json();
+            
             this.notes.clear();
             (notesFromServer || []).forEach(n => {
-    
-});
+                const processedNote = this._processNote(n);
+                this.notes.set(processedNote.id, processedNote);
+            });
+
             this.renderNotes();
         } catch (error) { console.error('❌ Error al recargar datos:', error); }
     },
@@ -137,12 +157,13 @@ const NotesApp = {
             if (!response || !response.ok) throw new Error('Error al actualizar en el servidor.');
 
             const updatedNote = await response.json();
-            this.notes.set(note.id, updatedNote); 
+            const processedNote = this._processNote(updatedNote); // Procesar la nota actualizada
+            this.notes.set(note.id, processedNote); 
 
-            if (updatedNote.notificaciones_activas) {
-                this.scheduleNotifications(updatedNote);
+            if (processedNote.notificaciones_activas) {
+                this.scheduleNotifications(processedNote);
             } else {
-                this.cancelNotifications(updatedNote);
+                this.cancelNotifications(processedNote);
             }
             
             alert(`Notificaciones ${newState ? 'activadas' : 'desactivadas'} para esta nota.`);
@@ -194,7 +215,6 @@ const NotesApp = {
         const hora = document.getElementById('new-note-hora').value;
         let fecha_hora = null;
         if (fecha) {
-            // Se construye la fecha como una cadena local y luego se convierte a ISO (UTC).
             const localDateString = `${fecha}T${hora || '00:00'}:00`;
             const localDate = new Date(localDateString);
             fecha_hora = localDate.toISOString();
@@ -218,7 +238,8 @@ const NotesApp = {
             });
             if (!response || !response.ok) throw new Error('Error del servidor al crear la nota.');
             
-            const newNote = await response.json();
+            const newNoteRaw = await response.json();
+            const newNote = this._processNote(newNoteRaw); // Procesar la nota nueva
             this.notes.set(newNote.id, newNote);
 
             if (newNote.notificaciones_activas && newNote.fecha_hora) {
@@ -404,22 +425,6 @@ const NotesApp = {
         } else {
             div.style.borderLeft = '4px solid transparent';
         }
-    },
-    
-    createDateInput(note, timeInput) {
-        const dateInput = document.createElement("input");
-        dateInput.type = "date";
-        dateInput.value = note.fecha || "";
-        dateInput.onchange = () => this.handleDateTimeChange(note, dateInput, timeInput);
-        return dateInput;
-    },
-
-    createTimeInput(note, dateInput) {
-        const timeInput = document.createElement("input");
-        timeInput.type = "time";
-        timeInput.value = note.hora || "";
-        timeInput.onchange = () => this.handleDateTimeChange(note, dateInput, timeInput);
-        return timeInput;
     },
 
     createControls(n, l) {
