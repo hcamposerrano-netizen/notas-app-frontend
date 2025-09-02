@@ -20,9 +20,10 @@ const APP_SHELL_FILES = [
   '/Search-notes.js',
   '/ui-interactions.js',
   '/manifest.json',
-  '/apple-touch-icon.png',
-  '/icons/android-chrome-192x192.png',
-  '/icons/android-chrome-512x512.png'
+   // '/favicon.ico',                 // COMENTADO - No existe
+  // '/apple-touch-icon.png',          // COMENTADO - No existe
+  // '/icons/android-chrome-192x192.png', // COMENTADO - No existe
+  // '/icons/android-chrome-512x512.png'  // COMENTADO - No existe
   // NOTA: Si añades más archivos JS/CSS/imágenes críticas, agrégalos aquí.
 ];
 
