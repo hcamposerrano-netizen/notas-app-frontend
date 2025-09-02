@@ -98,23 +98,39 @@ const NotesApp = {
         return fetch(url, { ...options, headers });
     },
 
-    async refreshAllData() {
-        const endpoint = this.isViewingArchived ? '/api/notes/archived' : '/api/notes';
-        try {
-            const response = await this.fetchWithAuth(`${API_BASE_URL}${endpoint}`);
-            if (!response) return; // Si fetchWithAuth falló (sin token), no continuamos.
-            if (!response.ok) throw new Error("No se pudo obtener los datos del servidor. Estado: " + response.status);
-            const notesFromServer = await response.json();
-            
+    // ... (el resto de tu app.js se mantiene igual) ...
+
+// ✅ CORREGIDO: La función ahora verifica que la respuesta sea un array antes de procesarla.
+async refreshAllData() {
+    const endpoint = this.isViewingArchived ? '/api/notes/archived' : '/api/notes';
+    try {
+        const response = await this.fetchWithAuth(`${API_BASE_URL}${endpoint}`);
+        if (!response) return;
+        if (!response.ok) throw new Error("No se pudo obtener los datos del servidor. Estado: " + response.status);
+        
+        const notesFromServer = await response.json();
+
+        // --- INICIO DE LA CORRECCIÓN ---
+        // Verificamos si la respuesta del servidor es realmente un array
+        if (Array.isArray(notesFromServer)) {
             this.notes.clear();
-            (notesFromServer || []).forEach(n => {
+            notesFromServer.forEach(n => { // Ahora esto es seguro
                 const processedNote = this._processNote(n);
                 this.notes.set(processedNote.id, processedNote);
             });
+        } else {
+            // Si no es un array, algo está mal en la respuesta del servidor.
+            // Lo mostramos en la consola para depurarlo y evitamos que la app se rompa.
+            console.error('Respuesta inesperada del servidor, se esperaba un array pero se recibió:', notesFromServer);
+            this.notes.clear(); // Limpiamos las notas para no mostrar datos viejos.
+        }
+        // --- FIN DE LA CORRECCIÓN ---
 
-            this.renderNotes();
-        } catch (error) { console.error('❌ Error al recargar datos:', error); }
-    },
+        this.renderNotes();
+    } catch (error) { console.error('❌ Error al recargar datos:', error); }
+},
+
+// ... (el resto de tu app.js se mantiene igual) ...
 
     async apiUpdate(note) {
         const { fecha, hora, ...noteToSend } = note;
