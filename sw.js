@@ -1,10 +1,10 @@
 // =================================================================
-// 🚀 SERVICE WORKER PARA NOTAS APP - VERSIÓN 4 (CON VERIFICACIÓN PERIÓDICA)
+// 🚀 SERVICE WORKER PARA NOTAS APP - VERSIÓN 5 (CORRECCIÓN DE CACHÉ)
 // =================================================================
 
 // --- 1. CONFIGURACIÓN DE CACHÉ ---
-const STATIC_CACHE_NAME = 'notas-app-static-cache-v9';
-const DYNAMIC_CACHE_NAME = 'notas-app-dynamic-cache-v7';
+const STATIC_CACHE_NAME = 'notas-app-static-cache-v10'; // Incrementamos versión para forzar actualización
+const DYNAMIC_CACHE_NAME = 'notas-app-dynamic-cache-v8';
 const APP_SHELL_FILES = [
   '/', '/index.html', '/style.css', '/app.js', '/editor-modal.js',
   '/calendar-view.js', '/filter-type.js', '/Search-notes.js',
@@ -16,7 +16,7 @@ const DB_NAME = 'ScheduledNotificationsDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'notifications';
 let db;
-let notificationInterval; // Variable para controlar nuestro intervalo
+let notificationInterval;
 
 function openDb() {
   if (db) return Promise.resolve(db);
@@ -54,11 +54,10 @@ self.addEventListener('activate', event => {
     }).then(() => {
         console.log('[SW] Activación completa. Iniciando comprobador de notificaciones...');
         return self.clients.claim().then(() => {
-          // ✅ CORRECCIÓN: Iniciar el intervalo periódico aquí
           if (!notificationInterval) {
-            notificationInterval = setInterval(checkAndFireNotifications, 60000); // Cada 60 segundos
+            notificationInterval = setInterval(checkAndFireNotifications, 60000);
           }
-          checkAndFireNotifications(); // Comprobar inmediatamente al activar
+          checkAndFireNotifications();
         }); 
     })
   );
@@ -73,7 +72,6 @@ async function checkAndFireNotifications() {
         const tx = db.transaction(STORE_NAME, 'readwrite');
         const store = tx.objectStore(STORE_NAME);
         const index = store.index('timestamp');
-        // Rango para todas las notificaciones cuyo tiempo ya pasó
         const range = IDBKeyRange.upperBound(Date.now());
         
         const request = index.getAll(range);
@@ -84,7 +82,7 @@ async function checkAndFireNotifications() {
                 console.log(`[SW] Se encontraron ${notificationsToFire.length} notificaciones vencidas para disparar.`);
                 notificationsToFire.forEach(notif => {
                     self.registration.showNotification(notif.title, notif.options);
-                    store.delete(notif.id); // Eliminar después de mostrar
+                    store.delete(notif.id);
                 });
             } else {
                 console.log('[SW] No hay notificaciones vencidas.');
@@ -98,11 +96,10 @@ async function checkAndFireNotifications() {
     }
 }
 
-
 async function scheduleNotifications(note) {
     console.log(`[SW] Recibida orden para programar notificaciones para: "${note.nombre}"`);
     await openDb();
-    await cancelScheduledNotifications(note.id); // Cancelar las viejas primero
+    await cancelScheduledNotifications(note.id);
 
     const dueDate = new Date(note.fecha_hora);
     const intervals = {
@@ -180,7 +177,6 @@ self.addEventListener('notificationclick', event => {
 
 // --- 5. ESTRATEGIA DE CACHÉ ---
 self.addEventListener('fetch', event => {
-    // No aplicar estrategia de caché para las peticiones de la API, ir siempre a la red
     if (event.request.url.includes('/api/')) {
         event.respondWith(fetch(event.request));
         return;
@@ -188,16 +184,20 @@ self.addEventListener('fetch', event => {
 
     event.respondWith(
         caches.match(event.request).then(responseFromCache => {
-            // Si está en caché, lo devuelve. Si no, va a la red.
             return responseFromCache || fetch(event.request).then(networkResponse => {
-                // Guarda la respuesta en el caché dinámico para futuras peticiones offline
+                // ✅ CORRECCIÓN: Solo intentar cachear peticiones HTTP/HTTPS válidas.
+                // Esto evita errores con peticiones de extensiones (chrome-extension://).
+                if (!event.request.url.startsWith('http')) {
+                    return networkResponse; // Simplemente la devuelve sin intentar guardarla.
+                }
+
                 return caches.open(DYNAMIC_CACHE_NAME).then(cache => {
                     cache.put(event.request, networkResponse.clone());
                     return networkResponse;
                 });
             });
         }).catch(() => {
-            // Fallback en caso de error (opcional)
+            // Fallback
         })
     );
 });
