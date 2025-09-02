@@ -1,5 +1,5 @@
 // ==============================================================
-// 📱 APLICACIÓN DE NOTAS - VERSIÓN 9.5 (ESTABLE)
+// 📱 APLICACIÓN DE NOTAS - VERSIÓN 9.6 (INICIALIZACIÓN CORREGIDA)
 // ==============================================================
 
 // --- CONFIGURACIÓN DE SUPABASE ---
@@ -16,6 +16,7 @@ const API_BASE_URL = "https://notas-app-backend-q1ne.onrender.com";
 const AuthManager = {
     session: null,
     init() {
+        // onAuthStateChange se activa cuando el usuario inicia sesión, cierra sesión, o la sesión se refresca.
         supabaseClient.auth.onAuthStateChange((event, session) => {
             this.session = session;
             this.renderUI();
@@ -25,12 +26,19 @@ const AuthManager = {
         const authContainer = document.getElementById('auth-container');
         const appContainer = document.getElementById('app-container');
         if (this.session) {
+            // El usuario TIENE una sesión válida
             authContainer.style.display = 'none';
             appContainer.style.display = 'flex';
             const userEmailEl = document.getElementById('user-email');
             if (userEmailEl) userEmailEl.textContent = this.session.user.email;
-            if (!NotesApp.isInitialized) NotesApp.init();
+            
+            // ✅ LA CORRECCIÓN CLAVE:
+            // Solo inicializamos la app DESPUÉS de confirmar que hay una sesión.
+            if (!NotesApp.isInitialized) {
+                NotesApp.init();
+            }
         } else {
+            // El usuario NO tiene sesión
             authContainer.style.display = 'block';
             appContainer.style.display = 'none';
         }
@@ -64,7 +72,6 @@ const NotesApp = {
     isViewingArchived: false,
     COLORS: [ { name: "Amarillo", value: "#f1e363ff" }, { name: "Azul", value: "#81d4fa" }, { name: "Verde", value: "#78a347ff" }, { name: "Rosa", value: "#b16982ff" }, { name: "Lila", value: "#8b5794ff" }, { name: "Naranja", value: "#ce730cff" }, { name: "Turquesa", value: "#558f97ff" }, { name: "Gris", value: "#afa4a4ff" } ],
 
-    // ✅ Helper para procesar las notas y asegurar formato de fecha/hora local
     _processNote(note) {
         if (note.fecha_hora) {
             const localDate = new Date(note.fecha_hora);
@@ -72,7 +79,6 @@ const NotesApp = {
             const month = (localDate.getMonth() + 1).toString().padStart(2, '0');
             const day = localDate.getDate().toString().padStart(2, '0');
             note.fecha = `${year}-${month}-${day}`;
-
             const hours = localDate.getHours().toString().padStart(2, '0');
             const minutes = localDate.getMinutes().toString().padStart(2, '0');
             note.hora = `${hours}:${minutes}`;
@@ -82,17 +88,22 @@ const NotesApp = {
 
     async fetchWithAuth(url, options = {}) {
         const token = AuthManager.getToken();
-        if (!token) { console.error("No hay token de autenticación."); return null; }
+        if (!token) {
+            console.error("No hay token de autenticación. La sesión podría haber expirado.");
+            // Opcional: podrías forzar un logout aquí para limpiar el estado.
+            // AuthManager.signOut(); 
+            return null;
+        }
         const headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
         return fetch(url, { ...options, headers });
     },
 
-    // ✅ CORREGIDO: La función ahora carga las notas correctamente
     async refreshAllData() {
         const endpoint = this.isViewingArchived ? '/api/notes/archived' : '/api/notes';
         try {
             const response = await this.fetchWithAuth(`${API_BASE_URL}${endpoint}`);
-            if (!response || !response.ok) throw new Error("No se pudo obtener los datos del servidor");
+            if (!response) return; // Si fetchWithAuth falló (sin token), no continuamos.
+            if (!response.ok) throw new Error("No se pudo obtener los datos del servidor. Estado: " + response.status);
             const notesFromServer = await response.json();
             
             this.notes.clear();
@@ -118,7 +129,7 @@ const NotesApp = {
     async toggleArchiveNote(note) {
         if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
         const noteElement = document.querySelector(`.note[data-note-id='${note.id}']`);
-        noteElement.classList.add('note-leaving');
+        if(noteElement) noteElement.classList.add('note-leaving');
 
         setTimeout(async () => {
             try {
@@ -130,7 +141,7 @@ const NotesApp = {
                 await this.refreshAllData();
             } catch (error) {
                 console.error("Error al archivar/desarchivar", error);
-                noteElement.classList.remove('note-leaving');
+                if(noteElement) noteElement.classList.remove('note-leaving');
             }
         }, 300);
     },
@@ -157,7 +168,7 @@ const NotesApp = {
             if (!response || !response.ok) throw new Error('Error al actualizar en el servidor.');
 
             const updatedNote = await response.json();
-            const processedNote = this._processNote(updatedNote); // Procesar la nota actualizada
+            const processedNote = this._processNote(updatedNote);
             this.notes.set(note.id, processedNote); 
 
             if (processedNote.notificaciones_activas) {
@@ -175,15 +186,11 @@ const NotesApp = {
     },
     
     _postMessageToSW(message) {
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.ready.then(registration => {
-                registration.active.postMessage(message);
-                console.log("Mensaje enviado al Service Worker:", message.type);
-            }).catch(err => {
-                console.error("Error al comunicar con el Service Worker:", err);
-            });
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+             navigator.serviceWorker.controller.postMessage(message);
+             console.log("Mensaje enviado al Service Worker:", message.type);
         } else {
-            console.error("Service Worker no es soportado en este navegador.");
+            console.error("Service Worker no está listo o no es soportado.");
         }
     },
 
@@ -205,10 +212,25 @@ const NotesApp = {
     },
 
     async handleFileUpload(noteId, file) { if (!file || file.size > 5 * 1024 * 1024) { alert(file ? "❌ El archivo es demasiado grande (máx 5MB)." : "No se seleccionó archivo."); return; } const formData = new FormData(); formData.append('file', file); try { const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${noteId}/upload`, { method: 'POST', body: formData }); if (!response || !response.ok) throw new Error('Error en la respuesta del servidor.'); alert('✅ Archivo subido con éxito!'); await this.refreshAllData(); } catch (error) { console.error('❌ Error al subir el archivo:', error); alert('❌ Hubo un problema al subir el archivo.'); } },
-    createNote() { const overlay = document.getElementById('new-note-overlay'); document.getElementById('new-note-form').reset(); overlay.classList.remove('overlay-hidden'); document.getElementById('new-note-nombre').focus(); },
-    _populateColorSelector() { const select = document.getElementById('new-note-color'); select.innerHTML = ''; this.COLORS.forEach(color => { const option = document.createElement('option'); option.value = color.value; option.textContent = color.name; if (color.value === "#f1e363ff") option.selected = true; select.appendChild(option); }); },
     
-    // ✅ CORREGIDO: Lógica de zona horaria al crear una nota.
+    createNote() { 
+        const overlay = document.getElementById('new-note-overlay'); 
+        document.getElementById('new-note-form').reset(); 
+        overlay.classList.remove('overlay-hidden'); 
+        document.getElementById('new-note-nombre').focus(); 
+    },
+
+    _populateColorSelector() { 
+        const select = document.getElementById('new-note-color'); 
+        select.innerHTML = ''; this.COLORS.forEach(color => { 
+            const option = document.createElement('option'); 
+            option.value = color.value; 
+            option.textContent = color.name; 
+            if (color.value === "#f1e363ff") option.selected = true; 
+            select.appendChild(option); 
+        }); 
+    },
+    
     async _handleCreateNoteSubmit(event) {
         event.preventDefault();
         const fecha = document.getElementById('new-note-fecha').value;
@@ -239,7 +261,7 @@ const NotesApp = {
             if (!response || !response.ok) throw new Error('Error del servidor al crear la nota.');
             
             const newNoteRaw = await response.json();
-            const newNote = this._processNote(newNoteRaw); // Procesar la nota nueva
+            const newNote = this._processNote(newNoteRaw);
             this.notes.set(newNote.id, newNote);
 
             if (newNote.notificaciones_activas && newNote.fecha_hora) {
@@ -262,7 +284,6 @@ const NotesApp = {
 
     _closeNewNoteModal() { document.getElementById('new-note-overlay').classList.add('overlay-hidden'); },
     
-    // ✅ CORREGIDO: Lógica de zona horaria al editar una nota existente.
     async handleDateTimeChange(note, dateInput, timeInput) {
         if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
         let new_fecha_hora = null;
@@ -277,7 +298,7 @@ const NotesApp = {
         }
     },
 
-    async deletePastNotes() { const notesToDeleteIds = Array.from(this.notes.values()).filter(n => n.fecha_hora && n.fecha_hora < new Date().toISOString() && n.tipo === 'Entrega').map(n => n.id); if (notesToDeleteIds.length === 0) return alert("👍 No hay entregas antiguas para eliminar."); if (!confirm(`🧹 ¿Seguro que quieres borrar ${notesToDeleteIds.length} entrega(s) pasada(s)?`)) return; try { await Promise.all(notesToDeleteIds.map(id => this.fetchWithAuth(`${API_BASE_URL}/api/notes/${id}`, { method: 'DELETE' }))); await this.refreshAllData(); alert(`🧹 ${notesToDeleteIds.length} entregas antiguas fueron eliminadas.`); } catch (error) { console.error('❌ Error durante el borrado en lote:', error); } },
+    async deletePastNotes() { const notesToDeleteIds = Array.from(this.notes.values()).filter(n => n.fecha_hora && new Date(n.fecha_hora) < new Date() && n.tipo === 'Entrega').map(n => n.id); if (notesToDeleteIds.length === 0) return alert("👍 No hay entregas antiguas para eliminar."); if (!confirm(`🧹 ¿Seguro que quieres borrar ${notesToDeleteIds.length} entrega(s) pasada(s)?`)) return; try { await Promise.all(notesToDeleteIds.map(id => this.fetchWithAuth(`${API_BASE_URL}/api/notes/${id}`, { method: 'DELETE' }))); await this.refreshAllData(); alert(`🧹 ${notesToDeleteIds.length} entregas antiguas fueron eliminadas.`); } catch (error) { console.error('❌ Error durante el borrado en lote:', error); } },
 
     renderNotes() {
         this.createColorFilterPanel();
@@ -357,12 +378,12 @@ const NotesApp = {
         if (a.fecha_hora && b.fecha_hora) return new Date(a.fecha_hora) - new Date(b.fecha_hora);
         if (a.fecha_hora) return -1;
         if (b.fecha_hora) return 1;
-        return 0;
+        return a.id > b.id ? 1 : -1; // Fallback sort
     },
 
     groupNotesByColor() {
         const grouped = {};
-        this.notes.forEach(note => {
+        Array.from(this.notes.values()).forEach(note => {
             const color = note.color || "#f1e363ff";
             if (!grouped[color]) grouped[color] = [];
             grouped[color].push(note);
@@ -430,56 +451,35 @@ const NotesApp = {
     createControls(n, l) {
         const controlsContainer = document.createElement("div");
         controlsContainer.className = "controls";
-
         const dateInput = document.createElement("input");
         dateInput.type = "date";
         dateInput.value = n.fecha || "";
-
         const timeInput = document.createElement("input");
         timeInput.type = "time";
         timeInput.value = n.hora || "";
-
         dateInput.onchange = () => this.handleDateTimeChange(n, dateInput, timeInput);
         timeInput.onchange = () => this.handleDateTimeChange(n, dateInput, timeInput);
-        
         controlsContainer.append(dateInput, timeInput);
-
         const moreOptionsBtn = document.createElement("button");
         moreOptionsBtn.className = "more-options-btn";
         moreOptionsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>`;
         moreOptionsBtn.title = "Más opciones";
         const menu = document.createElement("div");
         menu.className = "note-menu";
-        
         const editBtn = document.createElement("button");
         editBtn.innerHTML = "📝<span>Editar Avanzado</span>";
         editBtn.onclick = () => this.Editor.open(n.id);
-        
         const uploadBtn = document.createElement("button");
         uploadBtn.innerHTML = "📎<span>Adjuntar Archivo</span>";
         uploadBtn.onclick = () => { const fI = document.createElement('input'); fI.type = 'file'; fI.accept = ".pdf,.jpg,.jpeg,.png,.txt"; fI.onchange = (e) => this.handleFileUpload(n.id, e.target.files[0]); fI.click(); };
-        
         const pinBtn = this.createPinButton(n);
-        
         const archiveBtn = document.createElement("button");
         archiveBtn.innerHTML = this.isViewingArchived ? "🔄<span>Restaurar</span>" : "🗄️<span>Archivar</span>";
-        archiveBtn.onclick = (e) => {
-            e.stopPropagation();
-            this.toggleArchiveNote(n);
-        };
-        
+        archiveBtn.onclick = (e) => { e.stopPropagation(); this.toggleArchiveNote(n); };
         const notificationBtn = document.createElement("button");
         const notificationText = n.notificaciones_activas ? "🔕<span>Desactivar Avisos</span>" : "🔔<span>Activar Avisos</span>";
         notificationBtn.innerHTML = notificationText;
-        notificationBtn.onclick = (e) => {
-            e.stopPropagation();
-            if (n.fecha_hora) {
-                this.toggleNoteNotifications(n);
-            } else {
-                alert("Debes establecer una fecha y hora para activar las notificaciones.");
-            }
-        };
-
+        notificationBtn.onclick = (e) => { e.stopPropagation(); if (n.fecha_hora) { this.toggleNoteNotifications(n); } else { alert("Debes establecer una fecha y hora para activar las notificaciones."); } };
         const deleteBtn = this.createDeleteButton(n);
         const typeSelectLabel = document.createElement("label");
         typeSelectLabel.textContent = "🏷️ Tipo:";
@@ -493,9 +493,7 @@ const NotesApp = {
         const colorSelectContainer = document.createElement("div");
         colorSelectContainer.className = "menu-color-select";
         colorSelectContainer.append(colorSelectLabel, colorSelect);
-        
         menu.append(editBtn, uploadBtn, pinBtn, archiveBtn, notificationBtn, deleteBtn, typeSelectContainer, colorSelectContainer);
-        
         moreOptionsBtn.onclick = (e) => {
             e.stopPropagation();
             const parentNote = moreOptionsBtn.closest('.note');
@@ -516,55 +514,29 @@ const NotesApp = {
     createTypeLabel(n) { const l = document.createElement("div"); l.className = "note-type-label"; l.textContent = n.tipo || "Clase"; Object.assign(l.style, { fontSize: "0.7em", fontWeight: "bold", marginBottom: "0.2em" }); return l; },
     createNameInput(n) { const i = document.createElement("input"); i.type = "text"; i.placeholder = "Título..."; i.value = n.nombre || ""; i.oninput = () => { n.nombre = i.value; this.debouncedSave(n.id); }; return i; },
     createContentArea(n) { const t = document.createElement("textarea"); t.value = n.contenido; t.oninput = () => { n.contenido = t.value; this.debouncedSave(n.id); }; return t; },
+    
     createTypeSelect(n, l) {
         const s = document.createElement("select");
-        ["Clase", "Entrega"].forEach(t => {
-            const o = document.createElement("option");
-            o.value = t;
-            o.textContent = t;
-            if (t === n.tipo) o.selected = true;
-            s.appendChild(o);
-        });
-        s.addEventListener("change", () => {
-            if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
-            n.tipo = s.value;
-            l.textContent = s.value;
-            this.styleNoteElement(s.closest('.note'), n);
-            this.apiUpdate(n);
-        });
+        ["Clase", "Entrega"].forEach(t => { const o = document.createElement("option"); o.value = t; o.textContent = t; if (t === n.tipo) o.selected = true; s.appendChild(o); });
+        s.addEventListener("change", () => { if (this.debounceTimeout) clearTimeout(this.debounceTimeout); n.tipo = s.value; l.textContent = s.value; this.styleNoteElement(s.closest('.note'), n); this.apiUpdate(n); });
         return s;
     },
+
     createColorSelect(n) {
         const s = document.createElement("select");
-        this.COLORS.forEach(c => {
-            const o = document.createElement("option");
-            o.value = c.value;
-            o.textContent = c.name;
-            if (c.value === n.color) o.selected = true;
-            s.appendChild(o);
-        });
-        s.onchange = () => {
-            if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
-            n.color = s.value;
-            this.apiUpdate(n);
-        };
+        this.COLORS.forEach(c => { const o = document.createElement("option"); o.value = c.value; o.textContent = c.name; if (c.value === n.color) o.selected = true; s.appendChild(o); });
+        s.onchange = () => { if (this.debounceTimeout) clearTimeout(this.debounceTimeout); n.color = s.value; this.apiUpdate(n); };
         return s;
     },
+
     createPinButton(n) {
         const b = document.createElement("button");
-        const u = () => {
-            b.innerHTML = n.fijada ? "📌<span>Desfijar Nota</span>" : "📍<span>Fijar Nota</span>";
-        };
-        b.onclick = (e) => {
-            if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
-            e.stopPropagation();
-            n.fijada = !n.fijada;
-            u();
-            this.apiUpdate(n);
-        };
+        const u = () => { b.innerHTML = n.fijada ? "📌<span>Desfijar Nota</span>" : "📍<span>Fijar Nota</span>"; };
+        b.onclick = (e) => { if (this.debounceTimeout) clearTimeout(this.debounceTimeout); e.stopPropagation(); n.fijada = !n.fijada; u(); this.apiUpdate(n); };
         u();
         return b;
     },
+
     createDeleteButton(n) { const b = document.createElement("button"); b.innerHTML = "🗑️<span>Borrar Nota</span>"; b.onclick = (e) => { e.stopPropagation(); if (confirm("¿Seguro que quieres borrar esta nota?")) { const el = b.closest('.note'); el.classList.add('note-leaving'); setTimeout(async () => { await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${n.id}`, { method: 'DELETE' }); this.notes.delete(n.id); this.renderNotes(); }, 300); } }; return b; },
     updateReminders() { const rL = document.getElementById("reminder-list"); const u = [...this.notes.values()].filter(n => n.fecha_hora && new Date(n.fecha_hora) >= new Date() && n.tipo === "Entrega").sort(this.sortNotes).slice(0, 5); rL.innerHTML = ""; u.forEach(n => { const li = document.createElement("li"); li.textContent = `${n.fecha}${n.hora ? ' ' + n.hora : ''} - ${n.nombre || "(sin título)"}`; rL.appendChild(li); }); this.renderLinks(); },
     renderLinks() { const l = document.getElementById("link-list"); if(!l) return; l.innerHTML = ""; this.links.forEach((u, i) => { const li = document.createElement("li"); const a = document.createElement("a"); a.href = u; a.target = "_blank"; a.textContent = u; const d = document.createElement("button"); d.textContent = "🗑️"; d.onclick = () => { this.links.splice(i, 1); this.renderLinks(); }; li.append(a, d); l.appendChild(li); }); },
@@ -577,14 +549,22 @@ const NotesApp = {
     async init() {
         if (this.isInitialized) return;
         this.isInitialized = true;
+        
         this.Editor.init(this);
+        
         try { this.columnOrder = JSON.parse(localStorage.getItem('columnOrder')) || []; } catch(e) { this.columnOrder = []; }
+        try { this.columnNames = JSON.parse(localStorage.getItem('columnNames')) || {}; } catch (e) { this.columnNames = {}; }
+
         this.setupEventListeners();
+        
         try { 
             const response = await this.fetchWithAuth(`${API_BASE_URL}/api/settings/quicknote`); 
-            if (response && response.ok) { document.getElementById('quick-note').value = (await response.json()).value || ''; }
+            if (response && response.ok) { 
+                const data = await response.json();
+                document.getElementById('quick-note').value = data.value || ''; 
+            }
         } catch (e) { console.error('❌ No se pudo cargar la nota rápida:', e); }
-        try { this.columnNames = JSON.parse(localStorage.getItem('columnNames')) || {}; } catch (e) { this.columnNames = {}; }
+
         await this.refreshAllData();
         console.log('✅ Aplicación principal iniciada correctamente');
     },
@@ -604,6 +584,7 @@ const NotesApp = {
             btn.textContent = '🗄️ Ver Archivadas';
             btn.classList.remove('active');
             addNoteBtn.style.display = '';
+            if(filterPanel) filterPanel.style.display = '';
         }
         this.refreshAllData();
     },
@@ -633,6 +614,9 @@ const NotesApp = {
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('login-button').addEventListener('click', () => AuthManager.signInWithGoogle());
     document.getElementById('logout-button').addEventListener('click', () => AuthManager.signOut());
+    
+    // Inicia el gestor de autenticación, que a su vez iniciará la app
+    // cuando la sesión esté lista.
     AuthManager.init();
 
     if ('serviceWorker' in navigator) {
@@ -644,4 +628,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// Exponemos el objeto principal al scope global para que otros scripts (como calendar-view) puedan usarlo.
 window.NotesApp = NotesApp;
