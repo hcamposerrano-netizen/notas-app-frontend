@@ -1,14 +1,15 @@
 // =================================================================
-// 🚀 SERVICE WORKER COMPLETO PARA NOTAS APP - VERSIÓN FINAL
+// 🚀 SERVICE WORKER COMPLETO PARA NOTAS APP - VERSIÓN FINAL CORREGIDA
 // =================================================================
 
 // --- 1. CONFIGURACIÓN DE CACHÉ ---
 
-// Aumentamos la versión para forzar la actualización del Service Worker y la caché estática.
-const STATIC_CACHE_NAME = 'notas-app-static-cache-v6';
-const DYNAMIC_CACHE_NAME = 'notas-app-dynamic-cache-v4';
+// Se aumenta la versión para forzar la actualización del Service Worker.
+const STATIC_CACHE_NAME = 'notas-app-static-cache-v7';
+const DYNAMIC_CACHE_NAME = 'notas-app-dynamic-cache-v5';
 
-// Archivos esenciales para que la aplicación funcione offline (el "App Shell").
+// ✅ CORREGIDO: Lista de archivos esenciales que SÍ existen en el proyecto.
+// Se han eliminado los archivos de íconos que daban error 404.
 const APP_SHELL_FILES = [
   '/',
   '/index.html',
@@ -19,47 +20,36 @@ const APP_SHELL_FILES = [
   '/filter-type.js',
   '/Search-notes.js',
   '/ui-interactions.js',
-  '/manifest.json',
-   // '/favicon.ico',                 // COMENTADO - No existe
-  // '/apple-touch-icon.png',          // COMENTADO - No existe
-  // '/icons/android-chrome-192x192.png', // COMENTADO - No existe
-  // '/icons/android-chrome-512x512.png'  // COMENTADO - No existe
-  // NOTA: Si añades más archivos JS/CSS/imágenes críticas, agrégalos aquí.
+  '/manifest.json'
 ];
 
 
 // --- 2. CICLO DE VIDA DEL SERVICE WORKER ---
 
-// Evento 'install': Se dispara cuando el navegador instala el SW.
 self.addEventListener('install', event => {
   console.log('[SW] Instalando...');
-  // Esperamos a que la promesa de cacheo del App Shell se complete.
   event.waitUntil(
     caches.open(STATIC_CACHE_NAME).then(cache => {
       console.log('[SW] Cache estático abierto. Guardando App Shell...');
       return cache.addAll(APP_SHELL_FILES);
     }).then(() => {
       console.log('[SW] App Shell cacheado con éxito. Forzando activación.');
-      return self.skipWaiting(); // Activa este SW inmediatamente, sin esperar a que el viejo se cierre.
+      return self.skipWaiting();
     })
   );
 });
 
-// Evento 'activate': Se dispara después de la instalación, cuando el SW toma el control.
 self.addEventListener('activate', event => {
   console.log('[SW] Activando...');
-  // Esperamos a que la limpieza de cachés antiguos termine.
   event.waitUntil(
     caches.keys().then(keys => {
       return Promise.all(keys
-        // Filtramos para quedarnos solo con las cachés que no son las actuales.
         .filter(key => key !== STATIC_CACHE_NAME && key !== DYNAMIC_CACHE_NAME)
-        // Borramos cada una de las cachés antiguas.
         .map(key => caches.delete(key))
       );
     }).then(() => {
         console.log('[SW] Cachés antiguos eliminados.');
-        return self.clients.claim(); // Permite que el SW tome control de las páginas abiertas inmediatamente.
+        return self.clients.claim();
     })
   );
 });
@@ -67,10 +57,8 @@ self.addEventListener('activate', event => {
 
 // --- 3. LÓGICA DE NOTIFICACIONES ---
 
-// Objeto para almacenar los IDs de los timeouts y poder cancelarlos.
 const scheduledTimeouts = {};
 
-// Función para cancelar todas las notificaciones programadas para una nota específica.
 function cancelScheduled(noteId) {
     if (scheduledTimeouts[noteId] && scheduledTimeouts[noteId].length) {
         console.log(`[SW] Cancelando ${scheduledTimeouts[noteId].length} notificaciones para la nota ${noteId}`);
@@ -79,40 +67,48 @@ function cancelScheduled(noteId) {
     }
 }
 
-// Función para construir y mostrar una notificación.
 function mostrarNotificacion(note, tiempo) {
     const options = {
         body: `Tu nota "${note.nombre || '(Sin Título)'}" vence en ${tiempo}.`,
-        icon: '/icons/android-chrome-192x192.png',
-        badge: '/icons/android-chrome-192x192.png', // Icono para Android
-        vibrate: [200, 100, 200], // Patrón de vibración
-        tag: `nota-${note.id}` // Un tag único para que notificaciones nuevas sobre la misma nota reemplacen a las viejas.
+        icon: '/icons/android-chrome-192x192.png', // Nota: Este ícono debe existir para que se muestre.
+        badge: '/icons/android-chrome-192x192.png',
+        vibrate: [200, 100, 200],
+        tag: `nota-${note.id}`
     };
     self.registration.showNotification('Recordatorio de Nota', options);
 }
 
-// Evento 'message': Escucha los comandos enviados desde la aplicación principal (app.js).
 self.addEventListener('message', event => {
     const data = event.data;
     if (!data) return;
 
-    // Comando para programar notificaciones
     if (data.type === 'SCHEDULE_NOTIFICATION') {
         const note = data.payload;
         const dueDate = new Date(note.fecha_hora);
 
         console.log(`[SW] Comando 'SCHEDULE_NOTIFICATION' recibido para: "${note.nombre}"`);
-        console.log(`[SW] Vence el: ${dueDate.toLocaleString()}`);
+        console.log(`[SW] Vence el (UTC): ${dueDate.toISOString()}`);
 
-        // Primero, cancelamos cualquier notificación antigua para esta nota.
         cancelScheduled(note.id);
         
-        // Intervalos de tiempo reales para los recordatorios.
+        // --- INTERVALOS DE TIEMPO ---
+        // Descomenta el bloque de PRUEBAS para verificar rápidamente.
+        
+        // Versión para PRODUCCIÓN (activa por defecto)
         const intervals = {
             "2 días": 2 * 24 * 60 * 60 * 1000,
             "24 horas": 24 * 60 * 60 * 1000,
             "4 horas": 4 * 60 * 60 * 1000
         };
+        
+        /*
+        // Versión para PRUEBAS (comentada)
+        const intervals = {
+            "2 minutos antes": 2 * 60 * 1000,
+            "1 minuto antes": 1 * 60 * 1000,
+            "30 segundos antes": 30 * 1000
+        };
+        */
         
         scheduledTimeouts[note.id] = [];
 
@@ -121,7 +117,6 @@ self.addEventListener('message', event => {
             const now = Date.now();
             const delay = notificationTime - now;
 
-            // Solo programamos la notificación si el tiempo de aviso es en el futuro.
             if (delay > 0) {
                 console.log(`[SW] ✅ PROGRAMANDO notificación de "${label}" en ${Math.round(delay / 1000 / 60)} minutos.`);
                 const timeoutId = setTimeout(() => {
@@ -135,7 +130,6 @@ self.addEventListener('message', event => {
         });
     }
 
-    // Comando para cancelar notificaciones
     if (data.type === 'CANCEL_NOTIFICATION') {
         const noteId = data.payload.id;
         console.log(`[SW] Comando 'CANCEL_NOTIFICATION' recibido para la nota ID: ${noteId}`);
@@ -146,42 +140,33 @@ self.addEventListener('message', event => {
 
 // --- 4. ESTRATEGIAS DE RED Y CACHÉ (FETCH) ---
 
-// Evento 'fetch': Se dispara cada vez que la app realiza una petición de red.
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // ESTRATEGIA 1: Network First (para la API)
-  // Intenta ir a la red primero. Si falla, usa la caché como respaldo.
-  // Ideal para datos que necesitan estar actualizados.
+  // ESTRATEGIA 1: Network First para la API
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(event.request)
         .then(networkResponse => {
-          // Si la petición a la red tiene éxito...
           return caches.open(DYNAMIC_CACHE_NAME).then(cache => {
-            // Guardamos una copia de la respuesta en la caché dinámica.
-            cache.put(event.request, networkResponse.clone());
-            // Y devolvemos la respuesta de la red a la aplicación.
+            // ✅ CORREGIDO: Solo guardamos en caché las peticiones GET para evitar errores.
+            if (event.request.method === 'GET') {
+              cache.put(event.request, networkResponse.clone());
+            }
             return networkResponse;
           });
         })
         .catch(() => {
-          // Si la petición a la red falla (estamos offline)...
-          // Intentamos encontrar una respuesta en la caché.
           console.log(`[SW] Sin conexión. Sirviendo desde caché para: ${event.request.url}`);
           return caches.match(event.request);
         })
     );
   } 
   
-  // ESTRATEGIA 2: Cache First (para todo lo demás)
-  // Intenta obtener el recurso de la caché primero. Si no está, va a la red.
-  // Ideal para el App Shell (CSS, JS, imágenes) para velocidad y funcionamiento offline.
+  // ESTRATEGIA 2: Cache First para todo lo demás
   else {
     event.respondWith(
       caches.match(event.request).then(responseFromCache => {
-        // Si encontramos una respuesta en la caché, la devolvemos inmediatamente.
-        // Si no (responseFromCache es null), entonces realizamos la petición a la red.
         return responseFromCache || fetch(event.request);
       })
     );

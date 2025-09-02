@@ -197,9 +197,15 @@ const NotesApp = {
         const fecha = document.getElementById('new-note-fecha').value;
         const hora = document.getElementById('new-note-hora').value;
         let fecha_hora = null;
-        if (fecha) {
-            fecha_hora = `${fecha}T${hora || '00:00'}:00.000Z`;
-        }
+if (fecha) {
+    // 1. Creamos una fecha como si fuera local, sin especificar zona horaria.
+    const localDateString = `${fecha}T${hora || '00:00'}:00`;
+    // 2. Creamos un objeto Date a partir de esa cadena. JS asumirá que es la zona horaria del usuario.
+    const localDate = new Date(localDateString);
+    // 3. Convertimos esa fecha local a la cadena estándar ISO (que estará en UTC).
+    //    Ej: Si un usuario en UTC-6 pone las 16:00, esto generará "...T22:00:00.000Z"
+    fecha_hora = localDate.toISOString();
+}
 
         const noteData = {
             nombre: document.getElementById('new-note-nombre').value || "Nueva Nota",
@@ -245,10 +251,13 @@ const NotesApp = {
     // ▼▼ AÑADE ESTA LÍNEA AQUÍ ▼▼
     if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
     // ▲▲ FIN DE LA LÍNEA A AÑADIR ▲▲
-    let new_fecha_hora = null;
-    if (dateInput.value) {
-        new_fecha_hora = `${dateInput.value}T${timeInput.value || '00:00'}:00.000Z`;
-    }
+    
+let new_fecha_hora = null;
+if (dateInput.value) {
+    const localDateString = `${dateInput.value}T${timeInput.value || '00:00'}:00`;
+    const localDate = new Date(localDateString);
+    new_fecha_hora = localDate.toISOString();
+}
     if (note.fecha_hora !== new_fecha_hora) {
         note.fecha_hora = new_fecha_hora;
         await this.apiUpdate(note);
