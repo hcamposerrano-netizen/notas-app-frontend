@@ -17,7 +17,7 @@ const APP_SHELL_FILES = [
   '/editor-modal.js',
   '/calendar-view.js',
   '/filter-type.js',
-  '/search-notes.js',
+  '/Search-notes.js',
   '/ui-interactions.js',
   '/manifest.json',
   '/favicon.ico',
