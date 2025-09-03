@@ -1,10 +1,10 @@
 // =================================================================
-// 🚀 SERVICE WORKER PARA NOTAS APP - VERSIÓN 5.1 (MANEJO DE ERRORES)
+// 🚀 SERVICE WORKER PARA NOTAS APP - VERSIÓN 5.3 (SINTAXIS CORREGIDA)
 // =================================================================
 
 // --- 1. CONFIGURACIÓN DE CACHÉ ---
-const STATIC_CACHE_NAME = 'notas-app-static-cache-v10';
-const DYNAMIC_CACHE_NAME = 'notas-app-dynamic-cache-v8';
+const STATIC_CACHE_NAME = 'notas-app-static-cache-v11'; // Incrementamos para forzar actualización
+const DYNAMIC_CACHE_NAME = 'notas-app-dynamic-cache-v9';
 const APP_SHELL_FILES = [
   '/', '/index.html', '/style.css', '/app.js', '/editor-modal.js',
   '/calendar-view.js', '/filter-type.js', '/Search-notes.js',
@@ -13,7 +13,7 @@ const APP_SHELL_FILES = [
 
 // --- 2. CONFIGURACIÓN DE INDEXEDDB ---
 const DB_NAME = 'ScheduledNotificationsDB';
-const DB_VERSION = 1;
+const DB_VERSION = 1; // Lo reseteamos a 1, ya que la base nunca se creó
 const STORE_NAME = 'notifications';
 let db;
 let notificationInterval;
@@ -65,9 +65,7 @@ self.addEventListener('activate', event => {
 });
 
 // --- 4. LÓGICA DE NOTIFICACIONES CON INDEXEDDB ---
-
 async function checkAndFireNotifications() {
-    console.log('[SW] Comprobando notificaciones pendientes a las', new Date().toLocaleTimeString());
     try {
         await openDb();
         const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -78,39 +76,29 @@ async function checkAndFireNotifications() {
         request.onsuccess = () => {
             const notificationsToFire = request.result;
             if (notificationsToFire.length > 0) {
-                console.log(`[SW] Se encontraron ${notificationsToFire.length} notificaciones vencidas para disparar.`);
                 notificationsToFire.forEach(notif => {
                     self.registration.showNotification(notif.title, notif.options);
                     store.delete(notif.id);
                 });
-            } else {
-                console.log('[SW] No hay notificaciones vencidas.');
             }
         };
-        request.onerror = (event) => {
-            console.error('[SW] Error al buscar notificaciones en IndexedDB:', event.target.error);
-        }
     } catch (error) {
-        console.error('[SW] Error en la función checkAndFireNotifications:', error);
+        console.error('[SW] Error en checkAndFireNotifications:', error);
     }
 }
 
 async function scheduleNotifications(note) {
     try {
-        console.log(`[SW] Recibida orden para programar notificaciones para: "${note.nombre}"`);
         await openDb();
         await cancelScheduledNotifications(note.id);
-
         const dueDate = new Date(note.fecha_hora);
         const intervals = {
             "2 días": 2 * 24 * 60 * 60 * 1000,
             "24 horas": 24 * 60 * 60 * 1000,
             "4 horas": 4 * 60 * 60 * 1000
         };
-
         const tx = db.transaction(STORE_NAME, 'readwrite');
         const store = tx.objectStore(STORE_NAME);
-
         Object.entries(intervals).forEach(([label, interval]) => {
             const timestamp = dueDate.getTime() - interval;
             if (timestamp > Date.now()) {
@@ -118,14 +106,9 @@ async function scheduleNotifications(note) {
                     noteId: note.id,
                     timestamp: timestamp,
                     title: 'Recordatorio de Nota',
-                    options: {
-                        body: `Tu nota "${note.nombre || '(Sin Título)'}" vence en ${label}.`,
-                        icon: '/icons/android-chrome-192x192.png',
-                        tag: `nota-${note.id}-${timestamp}`
-                    }
+                    options: { body: `Tu nota "${note.nombre || '(Sin Título)'}" vence en ${label}.`, icon: '/icons/android-chrome-192x192.png', tag: `nota-${note.id}-${timestamp}` }
                 };
                 store.add(notificationData);
-                console.log(`[SW] ✅ Guardada notificación de "${label}" en IndexedDB para dispararse a las ${new Date(timestamp).toLocaleString()}`);
             }
         });
     } catch (error) {
@@ -144,12 +127,9 @@ async function cancelScheduledNotifications(noteId) {
             request.onsuccess = event => {
                 const cursor = event.target.result;
                 if (cursor) {
-                    if (cursor.value.noteId === noteId) {
-                        cursor.delete();
-                    }
+                    if (cursor.value.noteId === noteId) cursor.delete();
                     cursor.continue();
                 } else {
-                    console.log(`[SW] Se eliminaron las notificaciones pendientes para la nota ${noteId}.`);
                     resolve();
                 }
             };
@@ -173,9 +153,7 @@ self.addEventListener('notificationclick', event => {
         if (clientList.length > 0) {
             let client = clientList[0];
             for (let i = 0; i < clientList.length; i++) {
-                if (clientList[i].focused) {
-                    client = clientList[i];
-                }
+                if (clientList[i].focused) client = clientList[i];
             }
             return client.focus();
         }
@@ -201,7 +179,7 @@ self.addEventListener('fetch', event => {
                 });
             });
         }).catch(() => {
-            // Fallback
+            // No hacer nada en caso de error de red si no está en caché
         })
     );
-});```
+}); // <-- ESTE CIERRE ES EL QUE PROBABLEMENTE FALTABA
