@@ -19,12 +19,15 @@ if (actionsContainer) {
 
   let calendarMode = false;
 
+ // calendar-view.js - REEMPLAZAR ESTA FUNCIÓN
+
   function parseDate(fechaStr) {
     if (!fechaStr) return null;
     const parts = fechaStr.split("-");
     if (parts.length !== 3) return null;
-    const [a, m, d] = parts;
-    return new Date(`${a}-${m}-${d}T00:00:00`);
+    const [a, m, d] = parts.map(Number);
+    // Creamos la fecha explícitamente para evitar que el navegador la interprete como UTC.
+    return new Date(a, m - 1, d);
   }
 
   function getWeekStart(date) {
