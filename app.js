@@ -143,25 +143,48 @@ async refreshAllData() {
         } catch (error) { console.error(`❌ Error al actualizar nota ${note.id}:`, error); }
     },
 
-    async toggleArchiveNote(note) {
-        if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
-        const noteElement = document.querySelector(`.note[data-note-id='${note.id}']`);
-        if(noteElement) noteElement.classList.add('note-leaving');
+    // 🔄 REEMPLAZA TU FUNCIÓN ACTUAL CON ESTA VERSIÓN SIMPLIFICADA
+async toggleNoteNotifications(note) {
+    const newState = !note.notificaciones_activas;
 
-        setTimeout(async () => {
-            try {
-                await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${note.id}/archive`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ is_archived: !note.is_archived })
-                });
-                await this.refreshAllData();
-            } catch (error) {
-                console.error("Error al archivar/desarchivar", error);
-                if(noteElement) noteElement.classList.remove('note-leaving');
-            }
-        }, 300);
-    },
+    // Solo pedimos permiso si lo vamos a activar por primera vez
+    if (newState && Notification.permission === 'default') {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            alert('No se pueden activar las notificaciones sin tu permiso.');
+            return;
+        }
+    }
+    
+    // Si el permiso ya fue denegado, informamos al usuario.
+    if (Notification.permission === 'denied') {
+        alert('Has bloqueado las notificaciones. Debes activarlas en la configuración del navegador.');
+        return;
+    }
+
+    try {
+        // Simplemente actualizamos el estado en el backend.
+        const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${note.id}/notifications`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notificaciones_activas: newState })
+        });
+
+        if (!response || !response.ok) throw new Error('Error al actualizar en el servidor.');
+
+        // Actualizamos la nota localmente y volvemos a renderizar.
+        const updatedNote = await response.json();
+        const processedNote = this._processNote(updatedNote);
+        this.notes.set(note.id, processedNote);
+        
+        alert(`Notificaciones ${newState ? 'activadas' : 'desactivadas'} para esta nota.`);
+        this.renderNotes();
+
+    } catch (error) {
+        console.error("Error al cambiar estado de notificación:", error);
+        alert("Hubo un problema al cambiar el estado de las notificaciones.");
+    }
+},
 
     async toggleNoteNotifications(note) {
         if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
@@ -202,31 +225,6 @@ async refreshAllData() {
         }
     },
     
-    _postMessageToSW(message) {
-        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-             navigator.serviceWorker.controller.postMessage(message);
-             console.log("Mensaje enviado al Service Worker:", message.type);
-        } else {
-            console.error("Service Worker no está listo o no es soportado.");
-        }
-    },
-
-    scheduleNotifications(note) {
-        if (!note.fecha_hora) return;
-        console.log(`Programando notificaciones para la nota: ${note.nombre}`);
-        this._postMessageToSW({
-            type: 'SCHEDULE_NOTIFICATION',
-            payload: note
-        });
-    },
-
-    cancelNotifications(note) {
-        console.log(`Cancelando notificaciones para la nota: ${note.id}`);
-        this._postMessageToSW({
-            type: 'CANCEL_NOTIFICATION',
-            payload: { id: note.id }
-        });
-    },
 
     async handleFileUpload(noteId, file) { if (!file || file.size > 5 * 1024 * 1024) { alert(file ? "❌ El archivo es demasiado grande (máx 5MB)." : "No se seleccionó archivo."); return; } const formData = new FormData(); formData.append('file', file); try { const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${noteId}/upload`, { method: 'POST', body: formData }); if (!response || !response.ok) throw new Error('Error en la respuesta del servidor.'); alert('✅ Archivo subido con éxito!'); await this.refreshAllData(); } catch (error) { console.error('❌ Error al subir el archivo:', error); alert('❌ Hubo un problema al subir el archivo.'); } },
     
@@ -278,14 +276,7 @@ async refreshAllData() {
             if (!response || !response.ok) throw new Error('Error del servidor al crear la nota.');
             
             const newNoteRaw = await response.json();
-            const newNote = this._processNote(newNoteRaw);
-            this.notes.set(newNote.id, newNote);
-
-            if (newNote.notificaciones_activas && newNote.fecha_hora) {
-                this.scheduleNotifications(newNote);
-            }
-
-            this.renderNotes();
+            
             
             const newNoteElement = document.querySelector(`.note[data-note-id='${newNote.id}']`);
             if (newNoteElement) {
