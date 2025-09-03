@@ -34,6 +34,23 @@ function openDb() {
     };
   });
 }
+ console.log('[SW] ¡Evento Push recibido!');
+
+  // Extraemos el texto del campo de DevTools ("Esto es una prueba").
+  // Si el evento viniera de un servidor real, aquí podrías recibir datos en formato JSON.
+  const pushData = event.data ? event.data.text() : 'Sin contenido';
+
+  const title = 'Notificación Push';
+  const options = {
+    body: `Contenido: ${pushData}`,
+    icon: '/icons/android-chrome-192x192.png', // Usa uno de tus íconos
+    badge: '/icons/android-chrome-192x192.png' // Opcional
+  };
+
+  // Le decimos al Service Worker que muestre la notificación.
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+  );
 
 // --- 3. CICLO DE VIDA DEL SERVICE WORKER ---
 self.addEventListener('install', event => {
