@@ -219,14 +219,30 @@ const NotesApp = {
         });
     },
     
+    // ==============================================================
+// 📱 APLICACIÓN DE NOTAS - VERSIÓN 9.8 (CORRECCIÓN DE ZONA HORARIA)
+// ==============================================================
+
+// ... (todo el código anterior se mantiene igual) ...
+
     async _handleCreateNoteSubmit(event) {
         event.preventDefault();
         const fecha = document.getElementById('new-note-fecha').value;
         const hora = document.getElementById('new-note-hora').value;
         let fecha_hora = null;
+
+        // --- INICIO DE LA CORRECCIÓN DE ZONA HORARIA ---
         if (fecha) {
-            fecha_hora = new Date(`${fecha}T${hora || '00:00'}`).toISOString();
+            const horaFinal = hora || '00:00';
+            const [year, month, day] = fecha.split('-').map(Number);
+            const [hours, minutes] = horaFinal.split(':').map(Number);
+            // Creamos la fecha explícitamente en la zona horaria del usuario.
+            // new Date(año, mes-1, día, hora, minuto)
+            const localDate = new Date(year, month - 1, day, hours, minutes);
+            // Convertimos esa fecha local a la cadena universal (UTC) correcta para guardarla.
+            fecha_hora = localDate.toISOString();
         }
+        // --- FIN DE LA CORRECCIÓN DE ZONA HORARIA ---
 
         const noteData = {
             nombre: document.getElementById('new-note-nombre').value || "Nueva Nota",
@@ -240,25 +256,19 @@ const NotesApp = {
 
         try {
             const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(noteData)
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(noteData)
             });
             if (!response || !response.ok) throw new Error('Error del servidor al crear la nota.');
             
             const newNoteRaw = await response.json();
-            
-            // ==========================================================
-            // ✅ INICIO DE LA CORRECCIÓN DEFINITIVA
-            // ==========================================================
-            const newNote = this._processNote(newNoteRaw); // 1. Procesa la nota y guárdala en una variable
-            this.notes.set(newNote.id, newNote);           // 2. Usa la nueva variable para agregarla al mapa de notas
-            
-            // 3. Ahora la variable 'newNote' SÍ existe y se puede usar sin problemas
+            const newNote = this._processNote(newNoteRaw);
+            this.notes.set(newNote.id, newNote);
+
             if (newNote.notificaciones_activas && newNote.fecha_hora) {
                 this.scheduleNotifications(newNote);
             }
-            // ==========================================================
-            // ✅ FIN DE LA CORRECCIÓN DEFINITIVA
-            // ==========================================================
 
             this.renderNotes();
             const newNoteElement = document.querySelector(`.note[data-note-id='${newNote.id}']`);
@@ -278,15 +288,25 @@ const NotesApp = {
         if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
         this.debounceTimeout = setTimeout(async () => {
             let new_fecha_hora = null;
+            
+            // --- INICIO DE LA CORRECCIÓN DE ZONA HORARIA ---
             if (dateInput.value) {
-                new_fecha_hora = new Date(`${dateInput.value}T${timeInput.value || '00:00'}`).toISOString();
+                const horaFinal = timeInput.value || '00:00';
+                const [year, month, day] = dateInput.value.split('-').map(Number);
+                const [hours, minutes] = horaFinal.split(':').map(Number);
+                const localDate = new Date(year, month - 1, day, hours, minutes);
+                new_fecha_hora = localDate.toISOString();
             }
+            // --- FIN DE LA CORRECCIÓN DE ZONA HORARIA ---
+
             if (note.fecha_hora !== new_fecha_hora) {
                 note.fecha_hora = new_fecha_hora;
                 await this.apiUpdate(note);
             }
         }, 1000);
     },
+
+// ... (el resto del código de app.js se mantiene igual) ...
 
     async deletePastNotes() {
         const notesToDeleteIds = Array.from(this.notes.values()).filter(n => n.fecha_hora && new Date(n.fecha_hora) < new Date() && n.tipo === 'Entrega').map(n => n.id);
