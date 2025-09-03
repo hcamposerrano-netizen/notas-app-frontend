@@ -6,7 +6,6 @@
 const SUPABASE_URL = 'https://vtxcjzglafbhdcrehamc.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0eGNqemdsYWZiaGRjcmVoYW1jIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTg0NDMxMiwiZXhwIjoyMDcxNDIwMzEyfQ.Nn2qLvYxzvNT-iZSCI5IEWZ26JKyhrQX1uYYlnp6KzU';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const VAPID_PUBLIC_KEY = "PEGA_AQUÍ_TU_CLAVE_PÚBLICA_GENERADA"; // ❗️ ¡IMPORTANTE!
 
 // --- CONFIGURACIÓN DE LA API ---
 const API_BASE_URL = "https://notas-app-backend-q1ne.onrender.com";
@@ -143,48 +142,25 @@ async refreshAllData() {
         } catch (error) { console.error(`❌ Error al actualizar nota ${note.id}:`, error); }
     },
 
-    // 🔄 REEMPLAZA TU FUNCIÓN ACTUAL CON ESTA VERSIÓN SIMPLIFICADA
-async toggleNoteNotifications(note) {
-    const newState = !note.notificaciones_activas;
+    async toggleArchiveNote(note) {
+        if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
+        const noteElement = document.querySelector(`.note[data-note-id='${note.id}']`);
+        if(noteElement) noteElement.classList.add('note-leaving');
 
-    // Solo pedimos permiso si lo vamos a activar por primera vez
-    if (newState && Notification.permission === 'default') {
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') {
-            alert('No se pueden activar las notificaciones sin tu permiso.');
-            return;
-        }
-    }
-    
-    // Si el permiso ya fue denegado, informamos al usuario.
-    if (Notification.permission === 'denied') {
-        alert('Has bloqueado las notificaciones. Debes activarlas en la configuración del navegador.');
-        return;
-    }
-
-    try {
-        // Simplemente actualizamos el estado en el backend.
-        const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${note.id}/notifications`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ notificaciones_activas: newState })
-        });
-
-        if (!response || !response.ok) throw new Error('Error al actualizar en el servidor.');
-
-        // Actualizamos la nota localmente y volvemos a renderizar.
-        const updatedNote = await response.json();
-        const processedNote = this._processNote(updatedNote);
-        this.notes.set(note.id, processedNote);
-        
-        alert(`Notificaciones ${newState ? 'activadas' : 'desactivadas'} para esta nota.`);
-        this.renderNotes();
-
-    } catch (error) {
-        console.error("Error al cambiar estado de notificación:", error);
-        alert("Hubo un problema al cambiar el estado de las notificaciones.");
-    }
-},
+        setTimeout(async () => {
+            try {
+                await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${note.id}/archive`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_archived: !note.is_archived })
+                });
+                await this.refreshAllData();
+            } catch (error) {
+                console.error("Error al archivar/desarchivar", error);
+                if(noteElement) noteElement.classList.remove('note-leaving');
+            }
+        }, 300);
+    },
 
     async toggleNoteNotifications(note) {
         if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
@@ -225,6 +201,31 @@ async toggleNoteNotifications(note) {
         }
     },
     
+    _postMessageToSW(message) {
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+             navigator.serviceWorker.controller.postMessage(message);
+             console.log("Mensaje enviado al Service Worker:", message.type);
+        } else {
+            console.error("Service Worker no está listo o no es soportado.");
+        }
+    },
+
+    scheduleNotifications(note) {
+        if (!note.fecha_hora) return;
+        console.log(`Programando notificaciones para la nota: ${note.nombre}`);
+        this._postMessageToSW({
+            type: 'SCHEDULE_NOTIFICATION',
+            payload: note
+        });
+    },
+
+    cancelNotifications(note) {
+        console.log(`Cancelando notificaciones para la nota: ${note.id}`);
+        this._postMessageToSW({
+            type: 'CANCEL_NOTIFICATION',
+            payload: { id: note.id }
+        });
+    },
 
     async handleFileUpload(noteId, file) { if (!file || file.size > 5 * 1024 * 1024) { alert(file ? "❌ El archivo es demasiado grande (máx 5MB)." : "No se seleccionó archivo."); return; } const formData = new FormData(); formData.append('file', file); try { const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes/${noteId}/upload`, { method: 'POST', body: formData }); if (!response || !response.ok) throw new Error('Error en la respuesta del servidor.'); alert('✅ Archivo subido con éxito!'); await this.refreshAllData(); } catch (error) { console.error('❌ Error al subir el archivo:', error); alert('❌ Hubo un problema al subir el archivo.'); } },
     
@@ -247,57 +248,58 @@ async toggleNoteNotifications(note) {
     },
     
     async _handleCreateNoteSubmit(event) {
-    event.preventDefault();
-    const fecha = document.getElementById('new-note-fecha').value;
-    const hora = document.getElementById('new-note-hora').value;
-    let fecha_hora = null;
-    if (fecha) {
-        const localDateString = `${fecha}T${hora || '00:00'}:00`;
-        const localDate = new Date(localDateString);
-        fecha_hora = localDate.toISOString();
-    }
-
-    const noteData = {
-        nombre: document.getElementById('new-note-nombre').value || "Nueva Nota",
-        contenido: document.getElementById('new-note-contenido').value,
-        tipo: document.getElementById('new-note-tipo').value,
-        color: document.getElementById('new-note-color').value,
-        fecha_hora: fecha_hora,
-        fijada: false,
-        notificaciones_activas: document.getElementById('new-note-notificaciones').checked
-    };
-
-    try {
-        const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(noteData)
-        });
-        if (!response || !response.ok) throw new Error('Error del servidor al crear la nota.');
-        
-        // --- INICIO DE LA CORRECCIÓN ---
-        // Estas líneas son las que se borraron accidentalmente.
-        // Toman la respuesta del servidor, la procesan y la guardan en la variable `newNote`.
-        const newNoteRaw = await response.json();
-        const newNote = this._processNote(newNoteRaw);
-        this.notes.set(newNote.id, newNote);
-        // --- FIN DE LA CORRECCIÓN ---
-
-        this.renderNotes();
-        
-        // Ahora esta parte volverá a funcionar porque `newNote` está definida.
-        const newNoteElement = document.querySelector(`.note[data-note-id='${newNote.id}']`);
-        if (newNoteElement) {
-            newNoteElement.classList.add('note-entering');
+        event.preventDefault();
+        const fecha = document.getElementById('new-note-fecha').value;
+        const hora = document.getElementById('new-note-hora').value;
+        let fecha_hora = null;
+        if (fecha) {
+            const localDateString = `${fecha}T${hora || '00:00'}:00`;
+            const localDate = new Date(localDateString);
+            fecha_hora = localDate.toISOString();
         }
-        
-        this._closeNewNoteModal();
-    } catch (error) {
-        // Este console.error ahora te mostrará el error específico en la consola.
-        console.error('❌ Error al crear nota desde el modal:', error);
-        alert('Hubo un problema al guardar la nota.');
-    }
-},
+
+        const noteData = {
+            nombre: document.getElementById('new-note-nombre').value || "Nueva Nota",
+            contenido: document.getElementById('new-note-contenido').value,
+            tipo: document.getElementById('new-note-tipo').value,
+            color: document.getElementById('new-note-color').value,
+            fecha_hora: fecha_hora,
+            fijada: false,
+            notificaciones_activas: document.getElementById('new-note-notificaciones').checked
+        };
+
+        try {
+            const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(noteData)
+            });
+            if (!response || !response.ok) throw new Error('Error del servidor al crear la nota.');
+            
+            const newNoteRaw = await response.json();
+            // --- INICIO DE LA CORRECCIÓN ---
+            const newNote = this._processNote(newNoteRaw); // 1. Procesa la nota y guárdala en una variable
+            this.notes.set(newNote.id, newNote);           // 2. Usa la nueva variable para guardarla
+
+            // 3. Ahora 'newNote' existe y se puede usar de forma segura
+            if (newNote.notificaciones_activas && newNote.fecha_hora) {
+                this.scheduleNotifications(newNote);
+            }
+            // --- FIN DE LA CORRECCIÓN ---
+
+            this.renderNotes();
+            
+            const newNoteElement = document.querySelector(`.note[data-note-id='${newNote.id}']`);
+            if (newNoteElement) {
+                newNoteElement.classList.add('note-entering');
+            }
+            
+            this._closeNewNoteModal();
+        } catch (error) {
+            console.error('❌ Error al crear nota desde el modal:', error);
+            alert('Hubo un problema al guardar la nota.');
+        }
+    },
 
     _closeNewNoteModal() { document.getElementById('new-note-overlay').classList.add('overlay-hidden'); },
     
