@@ -1,5 +1,5 @@
 // =================================================================
-// 🚀 SERVICE WORKER PARA NOTAS APP - VERSIÓN 5.3 (SINTAXIS CORREGIDA)
+// 🚀 SERVICE WORKER PARA NOTAS APP - VERSIÓN 5.4 (CON PUSH LISTENER)
 // =================================================================
 
 // --- 1. CONFIGURACIÓN DE CACHÉ ---
@@ -34,23 +34,6 @@ function openDb() {
     };
   });
 }
- console.log('[SW] ¡Evento Push recibido!');
-
-  // Extraemos el texto del campo de DevTools ("Esto es una prueba").
-  // Si el evento viniera de un servidor real, aquí podrías recibir datos en formato JSON.
-  const pushData = event.data ? event.data.text() : 'Sin contenido';
-
-  const title = 'Notificación Push';
-  const options = {
-    body: `Contenido: ${pushData}`,
-    icon: '/icons/android-chrome-192x192.png', // Usa uno de tus íconos
-    badge: '/icons/android-chrome-192x192.png' // Opcional
-  };
-
-  // Le decimos al Service Worker que muestre la notificación.
-  event.waitUntil(
-    self.registration.showNotification(title, options)
-  );
 
 // --- 3. CICLO DE VIDA DEL SERVICE WORKER ---
 self.addEventListener('install', event => {
@@ -76,7 +59,7 @@ self.addEventListener('activate', event => {
             notificationInterval = setInterval(checkAndFireNotifications, 60000);
           }
           checkAndFireNotifications();
-        }); 
+        });
     })
   );
 });
@@ -178,6 +161,29 @@ self.addEventListener('notificationclick', event => {
     }));
 });
 
+
+// ==========================================================
+// ======> AQUÍ ESTÁ EL CÓDIGO NUEVO Y NECESARIO <======
+// ==========================================================
+self.addEventListener('push', event => {
+  console.log('[SW] ¡Evento Push recibido!');
+
+  const pushData = event.data ? event.data.text() : 'Sin contenido';
+
+  const title = 'Notificación Push de Prueba';
+  const options = {
+    body: `Contenido: ${pushData}`,
+    icon: '/icons/android-chrome-192x192.png'
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+  );
+});
+// ==========================================================
+// ==========================================================
+
+
 // --- 5. ESTRATEGIA DE CACHÉ ---
 self.addEventListener('fetch', event => {
     if (event.request.url.includes('/api/')) {
@@ -199,4 +205,4 @@ self.addEventListener('fetch', event => {
             // No hacer nada en caso de error de red si no está en caché
         })
     );
-}); // <-- ESTE CIERRE ES EL QUE PROBABLEMENTE FALTABA
+});
