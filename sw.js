@@ -1,42 +1,21 @@
 // =================================================================
-// 🚀 SERVICE WORKER PARA NOTAS APP - VERSIÓN 5 (CORRECCIÓN DE CACHÉ)
+// 🚀 SERVICE WORKER PARA NOTAS APP - VERSIÓN PUSH
 // =================================================================
 
 // --- 1. CONFIGURACIÓN DE CACHÉ ---
-const STATIC_CACHE_NAME = 'notas-app-static-cache-v10'; // Incrementamos versión para forzar actualización
-const DYNAMIC_CACHE_NAME = 'notas-app-dynamic-cache-v8';
+const STATIC_CACHE_NAME = 'notas-app-static-cache-v13';
+const DYNAMIC_CACHE_NAME = 'notas-app-dynamic-cache-v11';
+// ✅ AÑADIDO: el nuevo script a la lista de caché
 const APP_SHELL_FILES = [
-  '/', '/index.html', '/style.css', '/app.js', '/editor-modal.js',
-  '/calendar-view.js', '/filter-type.js', '/Search-notes.js',
-  '/ui-interactions.js', '/manifest.json'
+  '/', '/index.html', '/style.css', '/app.js', '/push-manager.js',
+  '/editor-modal.js', '/calendar-view.js', '/filter-type.js', 
+  '/Search-notes.js', '/ui-interactions.js', '/manifest.json'
 ];
 
-// --- 2. CONFIGURACIÓN DE INDEXEDDB ---
-const DB_NAME = 'ScheduledNotificationsDB';
-const DB_VERSION = 1;
-const STORE_NAME = 'notifications';
-let db;
-let notificationInterval;
+// ❌ ELIMINADO: Toda la configuración y funciones de IndexedDB (`openDb`, etc.)
 
-function openDb() {
-  if (db) return Promise.resolve(db);
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onerror = (event) => reject('Error opening IndexedDB');
-    request.onsuccess = (event) => {
-      db = event.target.result;
-      resolve(db);
-    };
-    request.onupgradeneeded = (event) => {
-      const store = event.target.result.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
-      store.createIndex('timestamp', 'timestamp', { unique: false });
-    };
-  });
-}
-
-// --- 3. CICLO DE VIDA DEL SERVICE WORKER ---
+// --- 3. CICLO DE VIDA DEL SERVICE WORKER (Simplificado) ---
 self.addEventListener('install', event => {
-  console.log('[SW] Instalando...');
   event.waitUntil(
     caches.open(STATIC_CACHE_NAME).then(cache => cache.addAll(APP_SHELL_FILES))
     .then(() => self.skipWaiting())
@@ -44,153 +23,59 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  console.log('[SW] Activando...');
   event.waitUntil(
     caches.keys().then(keys => {
       return Promise.all(keys
         .filter(key => key !== STATIC_CACHE_NAME && key !== DYNAMIC_CACHE_NAME)
         .map(key => caches.delete(key))
-      );
-    }).then(() => {
-        console.log('[SW] Activación completa. Iniciando comprobador de notificaciones...');
-        return self.clients.claim().then(() => {
-          if (!notificationInterval) {
-            notificationInterval = setInterval(checkAndFireNotifications, 60000);
-          }
-          checkAndFireNotifications();
-        }); 
+      ).then(() => self.clients.claim());
     })
   );
 });
 
-// --- 4. LÓGICA DE NOTIFICACIONES CON INDEXEDDB ---
+// --- 4. 🔄 LÓGICA DE NOTIFICACIONES REEMPLAZADA ---
+// ❌ ELIMINADO: `checkAndFireNotifications`, `scheduleNotifications`, `cancelScheduledNotifications`, y el listener de `message`.
 
-async function checkAndFireNotifications() {
-    console.log('[SW] Comprobando notificaciones pendientes a las', new Date().toLocaleTimeString());
-    try {
-        await openDb();
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        const index = store.index('timestamp');
-        const range = IDBKeyRange.upperBound(Date.now());
-        
-        const request = index.getAll(range);
-
-        request.onsuccess = () => {
-            const notificationsToFire = request.result;
-            if (notificationsToFire.length > 0) {
-                console.log(`[SW] Se encontraron ${notificationsToFire.length} notificaciones vencidas para disparar.`);
-                notificationsToFire.forEach(notif => {
-                    self.registration.showNotification(notif.title, notif.options);
-                    store.delete(notif.id);
-                });
-            } else {
-                console.log('[SW] No hay notificaciones vencidas.');
-            }
-        };
-        request.onerror = (event) => {
-            console.error('[SW] Error al buscar notificaciones en IndexedDB:', event.target.error);
-        }
-    } catch (error) {
-        console.error('[SW] Error en la función checkAndFireNotifications:', error);
-    }
-}
-
-async function scheduleNotifications(note) {
-    console.log(`[SW] Recibida orden para programar notificaciones para: "${note.nombre}"`);
-    await openDb();
-    await cancelScheduledNotifications(note.id);
-
-    const dueDate = new Date(note.fecha_hora);
-    const intervals = {
-        "2 días": 2 * 24 * 60 * 60 * 1000,
-        "24 horas": 24 * 60 * 60 * 1000,
-        "4 horas": 4 * 60 * 60 * 1000
-    };
-
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
-
-    Object.entries(intervals).forEach(([label, interval]) => {
-        const timestamp = dueDate.getTime() - interval;
-        if (timestamp > Date.now()) {
-            const notificationData = {
-                noteId: note.id,
-                timestamp: timestamp,
-                title: 'Recordatorio de Nota',
-                options: {
-                    body: `Tu nota "${note.nombre || '(Sin Título)'}" vence en ${label}.`,
-                    icon: '/icons/android-chrome-192x192.png',
-                    tag: `nota-${note.id}-${timestamp}`
-                }
-            };
-            store.add(notificationData);
-            console.log(`[SW] ✅ Guardada notificación de "${label}" en IndexedDB para dispararse a las ${new Date(timestamp).toLocaleString()}`);
-        }
-    });
-}
-
-async function cancelScheduledNotifications(noteId) {
-    await openDb();
-    return new Promise(resolve => {
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        const request = store.openCursor();
-        request.onsuccess = event => {
-            const cursor = event.target.result;
-            if (cursor) {
-                if (cursor.value.noteId === noteId) {
-                    cursor.delete();
-                }
-                cursor.continue();
-            } else {
-                console.log(`[SW] Se eliminaron las notificaciones pendientes para la nota ${noteId}.`);
-                resolve();
-            }
-        };
-    });
-}
-
-self.addEventListener('message', event => {
-    if (event.data.type === 'SCHEDULE_NOTIFICATION') {
-        scheduleNotifications(event.data.payload);
-    } else if (event.data.type === 'CANCEL_NOTIFICATION') {
-        cancelScheduledNotifications(event.data.payload.id);
-    }
+// ✅ AÑADIDO: El nuevo listener para el evento 'push' que viene del servidor.
+self.addEventListener('push', event => {
+  console.log('[SW] Notificación Push recibida.');
+  const data = event.data.json();
+  const options = {
+    body: data.body,
+    icon: '/icons/android-chrome-192x192.png',
+    badge: '/icons/android-chrome-192x192.png'
+  };
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
 });
 
+// Se mantiene igual: abre la app al hacer clic en la notificación
 self.addEventListener('notificationclick', event => {
     event.notification.close();
     event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
-        if (clientList.length > 0) {
-            let client = clientList[0];
-            for (let i = 0; i < clientList.length; i++) {
-                if (clientList[i].focused) {
-                    client = clientList[i];
-                }
-            }
-            return client.focus();
+        for (const client of clientList) {
+            if (client.url === '/' && 'focus' in client) return client.focus();
         }
-        return clients.openWindow('/');
+        if (clients.openWindow) return clients.openWindow('/');
     }));
 });
 
-// --- 5. ESTRATEGIA DE CACHÉ ---
+// --- 5. ESTRATEGIA DE CACHÉ (Sin cambios) ---
 self.addEventListener('fetch', event => {
+    if (!event.request.url.startsWith('http')) {
+        return;
+    }
     if (event.request.url.includes('/api/')) {
         event.respondWith(fetch(event.request));
         return;
     }
-
     event.respondWith(
         caches.match(event.request).then(responseFromCache => {
             return responseFromCache || fetch(event.request).then(networkResponse => {
-                // ✅ CORRECCIÓN: Solo intentar cachear peticiones HTTP/HTTPS válidas.
-                // Esto evita errores con peticiones de extensiones (chrome-extension://).
                 if (!event.request.url.startsWith('http')) {
-                    return networkResponse; // Simplemente la devuelve sin intentar guardarla.
+                    return networkResponse;
                 }
-
                 return caches.open(DYNAMIC_CACHE_NAME).then(cache => {
                     cache.put(event.request, networkResponse.clone());
                     return networkResponse;

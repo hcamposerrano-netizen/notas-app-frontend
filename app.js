@@ -6,6 +6,7 @@
 const SUPABASE_URL = 'https://vtxcjzglafbhdcrehamc.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0eGNqemdsYWZiaGRjcmVoYW1jIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTg0NDMxMiwiZXhwIjoyMDcxNDIwMzEyfQ.Nn2qLvYxzvNT-iZSCI5IEWZ26JKyhrQX1uYYlnp6KzU';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const VAPID_PUBLIC_KEY = "PEGA_AQUÍ_TU_CLAVE_PÚBLICA_GENERADA"; // ❗️ ¡IMPORTANTE!
 
 // --- CONFIGURACIÓN DE LA API ---
 const API_BASE_URL = "https://notas-app-backend-q1ne.onrender.com";
