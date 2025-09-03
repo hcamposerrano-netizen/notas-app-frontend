@@ -247,48 +247,57 @@ async toggleNoteNotifications(note) {
     },
     
     async _handleCreateNoteSubmit(event) {
-        event.preventDefault();
-        const fecha = document.getElementById('new-note-fecha').value;
-        const hora = document.getElementById('new-note-hora').value;
-        let fecha_hora = null;
-        if (fecha) {
-            const localDateString = `${fecha}T${hora || '00:00'}:00`;
-            const localDate = new Date(localDateString);
-            fecha_hora = localDate.toISOString();
-        }
+    event.preventDefault();
+    const fecha = document.getElementById('new-note-fecha').value;
+    const hora = document.getElementById('new-note-hora').value;
+    let fecha_hora = null;
+    if (fecha) {
+        const localDateString = `${fecha}T${hora || '00:00'}:00`;
+        const localDate = new Date(localDateString);
+        fecha_hora = localDate.toISOString();
+    }
 
-        const noteData = {
-            nombre: document.getElementById('new-note-nombre').value || "Nueva Nota",
-            contenido: document.getElementById('new-note-contenido').value,
-            tipo: document.getElementById('new-note-tipo').value,
-            color: document.getElementById('new-note-color').value,
-            fecha_hora: fecha_hora,
-            fijada: false,
-            notificaciones_activas: document.getElementById('new-note-notificaciones').checked
-        };
+    const noteData = {
+        nombre: document.getElementById('new-note-nombre').value || "Nueva Nota",
+        contenido: document.getElementById('new-note-contenido').value,
+        tipo: document.getElementById('new-note-tipo').value,
+        color: document.getElementById('new-note-color').value,
+        fecha_hora: fecha_hora,
+        fijada: false,
+        notificaciones_activas: document.getElementById('new-note-notificaciones').checked
+    };
 
-        try {
-            const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(noteData)
-            });
-            if (!response || !response.ok) throw new Error('Error del servidor al crear la nota.');
-            
-            const newNoteRaw = await response.json();
-            
-            
-            const newNoteElement = document.querySelector(`.note[data-note-id='${newNote.id}']`);
-            if (newNoteElement) {
-                newNoteElement.classList.add('note-entering');
-            }
-            
-            this._closeNewNoteModal();
-        } catch (error) {
-            console.error('❌ Error al crear nota desde el modal:', error);
-            alert('Hubo un problema al guardar la nota.');
+    try {
+        const response = await this.fetchWithAuth(`${API_BASE_URL}/api/notes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(noteData)
+        });
+        if (!response || !response.ok) throw new Error('Error del servidor al crear la nota.');
+        
+        // --- INICIO DE LA CORRECCIÓN ---
+        // Estas líneas son las que se borraron accidentalmente.
+        // Toman la respuesta del servidor, la procesan y la guardan en la variable `newNote`.
+        const newNoteRaw = await response.json();
+        const newNote = this._processNote(newNoteRaw);
+        this.notes.set(newNote.id, newNote);
+        // --- FIN DE LA CORRECCIÓN ---
+
+        this.renderNotes();
+        
+        // Ahora esta parte volverá a funcionar porque `newNote` está definida.
+        const newNoteElement = document.querySelector(`.note[data-note-id='${newNote.id}']`);
+        if (newNoteElement) {
+            newNoteElement.classList.add('note-entering');
         }
-    },
+        
+        this._closeNewNoteModal();
+    } catch (error) {
+        // Este console.error ahora te mostrará el error específico en la consola.
+        console.error('❌ Error al crear nota desde el modal:', error);
+        alert('Hubo un problema al guardar la nota.');
+    }
+},
 
     _closeNewNoteModal() { document.getElementById('new-note-overlay').classList.add('overlay-hidden'); },
     
