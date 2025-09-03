@@ -7,7 +7,6 @@ const PushManager = {
     vapidPublicKey: '',
     API_BASE_URL: "https://notas-app-backend-q1ne.onrender.com", // Asegúrate que esta URL sea la correcta
 
-    // Convierte la clave VAPID para que el navegador la entienda
     _urlBase64ToUint8Array(base64String) {
         const padding = '='.repeat((4 - base64String.length % 4) % 4);
         const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -19,7 +18,6 @@ const PushManager = {
         return outputArray;
     },
 
-    // Pide permiso al usuario y envía la suscripción al backend
     async subscribe() {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
             console.warn('Push messaging no es soportado.');
@@ -31,14 +29,17 @@ const PushManager = {
             let subscription = await registration.pushManager.getSubscription();
 
             if (subscription === null) {
-                console.log('Creando nueva suscripción...');
+                if (Notification.permission === 'denied') {
+                    console.warn('El usuario ha denegado los permisos de notificación.');
+                    return;
+                }
+                
                 subscription = await registration.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: this._urlBase64ToUint8Array(this.vapidPublicKey)
                 });
             }
             
-            // Usamos el método fetchWithAuth de la app principal para la autenticación
             await this.app.fetchWithAuth(`${this.API_BASE_URL}/api/save-subscription`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -51,7 +52,6 @@ const PushManager = {
         }
     },
 
-    // Punto de entrada que será llamado por app.js
     init(appInstance, vapidKey) {
         console.log('Inicializando gestor de notificaciones push...');
         this.app = appInstance;

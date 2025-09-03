@@ -52,7 +52,9 @@ self.addEventListener('notificationclick', event => {
 });
 
 self.addEventListener('fetch', event => {
-    if (!event.request.url.startsWith('http')) return;
+    if (!event.request.url.startsWith('http')) {
+        return;
+    }
     if (event.request.url.includes('/api/')) {
         event.respondWith(fetch(event.request));
         return;
