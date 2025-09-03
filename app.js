@@ -276,6 +276,10 @@ async _handleCreateNoteSubmit(event) {
         alert('Hubo un problema al guardar la nota.');
     }
 },
+// Pega este bloque de código en el lugar correcto
+_closeNewNoteModal() {
+    document.getElementById('new-note-overlay').classList.add('overlay-hidden');
+},
 
 async handleDateTimeChange(note, dateInput, timeInput) {
     if (this.debounceTimeout) clearTimeout(this.debounceTimeout);
