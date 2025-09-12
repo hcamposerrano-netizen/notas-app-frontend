@@ -66,10 +66,16 @@ const NotesApp = {
     isViewingArchived: false,
     COLORS: [ { name: "Amarillo", value: "#f1e363ff" }, { name: "Azul", value: "#81d4fa" }, { name: "Verde", value: "#78a347ff" }, { name: "Rosa", value: "#b16982ff" }, { name: "Lila", value: "#8b5794ff" }, { name: "Naranja", value: "#ce730cff" }, { name: "Turquesa", value: "#558f97ff" }, { name: "Gris", value: "#afa4a4ff" } ],
 
-    _processNote(note) {
+        _processNote(note) {
         if (note.fecha_hora) {
             const localDate = new Date(note.fecha_hora);
-            note.fecha = localDate.toISOString().split('T')[0];
+            
+            // Corrección: Construir la fecha YYYY-MM-DD usando métodos locales
+            const year = localDate.getFullYear();
+            const month = String(localDate.getMonth() + 1).padStart(2, '0'); // Meses son 0-11
+            const day = String(localDate.getDate()).padStart(2, '0');
+            
+            note.fecha = `${year}-${month}-${day}`; // <-- Solución
             note.hora = localDate.toTimeString().substring(0, 5);
         }
         return note;

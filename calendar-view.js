@@ -21,13 +21,14 @@ if (actionsContainer) {
 
  // calendar-view.js - REEMPLAZAR ESTA FUNCIÓN
 
-  function parseDate(fechaStr) {
+    function parseDate(fechaStr) {
     if (!fechaStr) return null;
-    const parts = fechaStr.split("-");
-    if (parts.length !== 3) return null;
-    const [a, m, d] = parts.map(Number);
-    // Creamos la fecha explícitamente para evitar que el navegador la interprete como UTC.
-    return new Date(a, m - 1, d);
+    // La cadena ya está en formato YYYY-MM-DD
+    // Al añadir 'T00:00:00', le decimos a new Date que interprete la hora
+    // en la zona horaria local, evitando saltos de día.
+    const date = new Date(`${fechaStr}T00:00:00`);
+    if (isNaN(date.getTime())) return null;
+    return date;
   }
 
   function getWeekStart(date) {
