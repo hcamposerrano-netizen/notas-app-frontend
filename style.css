@@ -436,3 +436,32 @@ body.panel-open #panel-dimmer { /* ✅ Corregido */
 .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: .4s; }
 input:checked + .slider { background-color: var(--color-primary-accent); }
 input:checked + .slider:before { transform: translateX(18px); }
+/* ================================
+   ✨ ESTILOS PARA ADJUNTOS CON NOMBRES LARGOS
+   ================================ */
+.attachment-container {
+  /* 1. Evita que el contenedor se expanda más allá de la nota.
+     Todo lo que no quepa, quedará oculto. */
+  overflow: hidden;
+
+  /* 2. Asegura que el texto del enlace no salte a una nueva línea,
+     forzándolo a quedarse en una sola. */
+  white-space: nowrap;
+}
+
+.attachment-container a {
+  /* 3. ESTA ES LA REGLA CLAVE: Muestra "..." cuando el texto es
+     demasiado largo para el contenedor. */
+  text-overflow: ellipsis;
+
+  /* 4. Para que text-overflow funcione, el elemento debe ser
+     un bloque o un bloque en línea. */
+  display: inline-block;
+
+  /* 5. Asegura que el enlace no sea más ancho que la nota. */
+  max-width: 100%;
+
+  /* 6. Opcional: Pequeño ajuste para que el ícono y el texto
+     se alineen mejor verticalmente. */
+  vertical-align: middle;
+}
